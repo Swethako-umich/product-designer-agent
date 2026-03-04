@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Product Designer Agent</title>
+<title>Swetha's Product Design Agent</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
@@ -61,8 +61,21 @@ code{font-family:'JetBrains Mono',monospace;font-size:13px}
 .ob::before{content:'';position:absolute;width:600px;height:600px;border-radius:50%;background:radial-gradient(circle,var(--ac-glow) 0%,transparent 70%);top:-200px;left:50%;transform:translateX(-50%);pointer-events:none}
 .ob-card{background:var(--s1);border:1px solid var(--bd2);border-radius:var(--r);padding:40px;width:520px;max-width:92vw;position:relative;z-index:1}
 .ob-logo{display:flex;align-items:center;gap:10px;margin-bottom:28px}
-.ob-logo-icon{width:40px;height:40px;border-radius:10px;background:linear-gradient(135deg,var(--ac),var(--teal));display:flex;align-items:center;justify-content:center;font-size:20px}
 .ob-logo-text{font-size:18px;font-weight:700;color:var(--t1)}
+/* ── Premium logo mark ──────────────────────────────────────────────────────── */
+.logo-mark{display:flex;align-items:center;justify-content:center;flex-shrink:0;
+  background:linear-gradient(135deg,#A07BFF 0%,#6672FF 50%,#00C4E0 100%);
+  color:#fff;font-family:'Inter',sans-serif;font-weight:800;letter-spacing:-.5px;
+  position:relative;overflow:hidden;
+  box-shadow:0 4px 20px rgba(123,95,245,.45),inset 0 1px 0 rgba(255,255,255,.25)}
+.logo-mark::before{content:'';position:absolute;top:0;left:0;right:0;height:55%;
+  background:linear-gradient(to bottom,rgba(255,255,255,.22),transparent);pointer-events:none}
+.logo-mark-lg{width:40px;height:40px;border-radius:10px;font-size:22px}
+.logo-mark-sm{width:28px;height:28px;border-radius:7px;font-size:14px}
+.logo-mark-xl{width:64px;height:64px;border-radius:16px;font-size:34px}
+/* Pulse on running */
+@keyframes logoPulse{0%,100%{box-shadow:0 4px 20px rgba(123,95,245,.45),inset 0 1px 0 rgba(255,255,255,.25)}50%{box-shadow:0 4px 28px rgba(123,95,245,.75),inset 0 1px 0 rgba(255,255,255,.25)}}
+.logo-mark.running{animation:logoPulse 1.6s ease-in-out infinite}
 .ob-logo-sub{font-size:12px;color:var(--t3);margin-top:1px}
 .ob-step{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.1em;color:var(--t3);margin-bottom:8px}
 .ob-title{font-size:22px;font-weight:700;color:var(--t1);margin-bottom:6px}
@@ -101,8 +114,34 @@ textarea{min-height:140px;line-height:1.6}
 .radio-sub{font-size:12px;color:var(--t2);margin-top:2px}
 
 /* Data textarea (shown conditionally) */
-.data-paste{margin-top:10px;display:none}
+.data-paste{margin-top:12px;display:none}
 .data-paste.visible{display:block}
+
+/* ─── Screen 3: Research Data — responsive layout overrides ─────────────── */
+#screen-data.ob{overflow-y:auto;align-items:center;justify-content:flex-start;padding:40px 20px}
+#screen-data .ob-card{max-width:680px;width:100%}
+/* 3-up horizontal radio grid */
+#screen-data .radio-group{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+#screen-data .radio-card{flex-direction:column;align-items:center;text-align:center;padding:16px 10px;gap:8px;border-radius:var(--r)}
+#screen-data .radio-dot{display:none}
+/* Icon tile inside each radio card */
+.rc-icon{width:38px;height:38px;border-radius:9px;background:var(--s4);display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0;transition:var(--trans)}
+#screen-data .radio-card.selected .rc-icon{background:var(--ac)}
+#screen-data .radio-label{font-size:12px;font-weight:600;line-height:1.3}
+#screen-data .radio-sub{font-size:11px;margin-top:2px;line-height:1.35}
+/* Section wrapper cards */
+.data-section{background:var(--s2);border:1px solid var(--bd);border-radius:var(--r);padding:18px;margin-bottom:14px}
+.data-section-header{display:flex;align-items:center;gap:10px;margin-bottom:14px}
+.data-section-icon{width:32px;height:32px;border-radius:8px;background:linear-gradient(135deg,var(--ac),var(--teal));display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0}
+.data-section-title{font-size:13px;font-weight:600;color:var(--t1)}
+.data-section-sub{font-size:11px;color:var(--t3);margin-top:2px}
+#screen-data textarea{min-height:100px}
+/* Mobile: stack radio cards vertically */
+@media(max-width:520px){
+  #screen-data .radio-group{grid-template-columns:1fr}
+  #screen-data .radio-card{flex-direction:row;text-align:left;align-items:flex-start;padding:12px;gap:12px}
+  .rc-icon{flex-shrink:0}
+}
 
 /* ─── Buttons ───────────────────────────────────────────────────────────────── */
 .btn{display:inline-flex;align-items:center;gap:7px;padding:9px 18px;border-radius:var(--rs);font-size:13px;font-weight:600;cursor:pointer;border:none;transition:var(--trans);font-family:inherit}
@@ -122,7 +161,6 @@ textarea{min-height:140px;line-height:1.6}
 #screen-main{flex-direction:column;background:var(--bg)}
 .app-header{display:flex;align-items:center;gap:14px;padding:0 20px;height:52px;border-bottom:1px solid var(--bd);background:var(--s1);flex-shrink:0;z-index:10}
 .app-logo{display:flex;align-items:center;gap:8px}
-.app-logo-icon{width:28px;height:28px;border-radius:7px;background:linear-gradient(135deg,var(--ac),var(--teal));display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0}
 .app-logo-text{font-size:13px;font-weight:700;color:var(--t1)}
 .app-project{font-size:12px;color:var(--t3);margin-left:4px}
 .app-progress{flex:1;max-width:300px;margin:0 auto}
@@ -177,13 +215,70 @@ textarea{min-height:140px;line-height:1.6}
 .idle-title{font-size:20px;font-weight:700;color:var(--t1)}
 .idle-sub{font-size:14px;color:var(--t2);text-align:center;max-width:400px;line-height:1.6}
 
-/* Executing (streaming) */
-#state-executing{flex-direction:column;padding:20px;gap:14px}
-.exec-header{display:flex;align-items:center;gap:10px;padding:12px 16px;background:var(--s2);border:1px solid var(--bd);border-radius:var(--rs)}
-.exec-label{font-size:13px;font-weight:600;color:var(--t1)}
-.exec-status{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--ac);margin-left:auto}
-.stream-box{flex:1;background:var(--s1);border:1px solid var(--bd);border-radius:var(--r);padding:20px;overflow-y:auto;font-family:'JetBrains Mono',monospace;font-size:13px;line-height:1.7;color:var(--t2);white-space:pre-wrap;word-break:break-word;min-height:300px}
+/* ─── Executing state — dashboard layout ────────────────────────────────── */
+#state-executing{flex-direction:column;gap:0;overflow-y:auto}
+
+/* Stats strip */
+.dash-strip{display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:10px;padding:14px 20px;flex-shrink:0;border-bottom:1px solid var(--bd)}
+.dash-stat{background:var(--s2);border:1px solid var(--bd);border-radius:var(--r);padding:12px 14px}
+.dash-stat-top{display:flex;align-items:baseline;gap:8px;margin-bottom:2px}
+.dash-stat-value{font-size:22px;font-weight:700;color:var(--t1);line-height:1}
+.dash-stat-label{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.07em;color:var(--t3)}
+.dash-stat-bar{height:3px;background:var(--s4);border-radius:99px;overflow:hidden;margin-top:8px}
+.dash-stat-fill{height:100%;background:linear-gradient(90deg,var(--ac),var(--teal));border-radius:99px;transition:width .5s ease;width:0%}
+@media(max-width:700px){.dash-strip{grid-template-columns:1fr 1fr}}
+
+/* Current skill hero card */
+.skill-hero-area{padding:14px 20px 0;flex-shrink:0}
+.skill-hero-card{background:var(--s1);border:1px solid var(--bd2);border-radius:var(--r);padding:22px 26px;display:flex;align-items:center;gap:22px;position:relative;overflow:hidden}
+.skill-hero-card::after{content:'';position:absolute;right:-50px;top:-50px;width:180px;height:180px;border-radius:50%;background:radial-gradient(circle,var(--ac-glow) 0%,transparent 65%);pointer-events:none}
+.hero-icon{width:64px;height:64px;border-radius:15px;background:var(--ac-lo);border:1.5px solid rgba(123,95,245,.25);display:flex;align-items:center;justify-content:center;font-size:28px;flex-shrink:0;transition:var(--trans);position:relative;z-index:1}
+.skill-hero-content{flex:1;min-width:0;position:relative;z-index:1}
+.skill-hero-step{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:var(--ac);margin-bottom:4px}
+/* exec-label reused as skill name display */
+#exec-label{font-size:19px;font-weight:700;color:var(--t1);margin-bottom:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block}
+.skill-hero-status-row{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--t2);margin-bottom:10px}
+.skill-progress-track{height:4px;background:var(--s4);border-radius:99px;overflow:hidden}
+.skill-progress-fill{height:100%;border-radius:99px;background:linear-gradient(90deg,var(--ac),var(--teal));background-size:200% 100%;animation:shimmer 1.8s linear infinite}
+@keyframes shimmer{0%{background-position:100% 0}100%{background-position:-100% 0}}
+
+/* Completed deliverables */
+.deliverables-area{padding:14px 20px 0;flex-shrink:0}
+.deliverables-heading{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);margin-bottom:10px}
+.deliverables-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
+.deliv-card{background:var(--s2);border:1px solid var(--bd);border-radius:var(--rs);padding:12px;display:flex;flex-direction:column;gap:5px;animation:fadeIn .3s ease;cursor:pointer;transition:var(--trans)}
+.deliv-card:hover{border-color:var(--ac);background:var(--s3)}
+.deliv-icon{font-size:18px}
+.deliv-name{font-size:11px;font-weight:600;color:var(--t1);line-height:1.35}
+.deliv-qa{font-size:10px;font-weight:700;padding:2px 7px;border-radius:99px;align-self:flex-start}
+.deliv-qa.PASS{background:var(--green-lo);color:var(--green)}
+.deliv-qa.NEEDS_IMPROVEMENT{background:var(--yellow-lo);color:var(--yellow)}
+.deliv-qa.FAIL{background:var(--red-lo);color:var(--red)}
+
+/* Live output collapsible */
+.live-toggle{display:flex;align-items:center;gap:7px;padding:10px 20px;cursor:pointer;font-size:11px;font-weight:500;color:var(--t3);transition:var(--trans);flex-shrink:0;user-select:none;border-top:1px solid var(--bd);margin-top:14px}
+.live-toggle:hover{color:var(--t2)}
+.live-arrow{font-size:8px;transition:transform .2s ease;display:inline-block}
+.live-toggle.open .live-arrow{transform:rotate(90deg)}
+.stream-wrap{display:none;padding:0 20px 16px;flex-shrink:0}
+.stream-wrap.open{display:block}
+.stream-box{background:var(--s1);border:1px solid var(--bd);border-radius:var(--r);padding:16px;overflow-y:auto;font-family:'JetBrains Mono',monospace;font-size:12px;line-height:1.7;color:var(--t2);white-space:pre-wrap;word-break:break-word;max-height:200px}
 .cursor{display:inline-block;width:8px;height:16px;background:var(--ac);vertical-align:text-bottom;animation:blink .7s infinite}
+
+/* ─── Review state — progress strip + 2-col layout ──────────────────────── */
+#state-review{flex-direction:column;padding:0;gap:0}
+.review-strip{display:flex;align-items:center;gap:14px;padding:10px 20px;background:var(--s2);border-bottom:1px solid var(--bd);flex-shrink:0}
+.review-strip-label{font-size:11px;font-weight:600;color:var(--t1);white-space:nowrap}
+.review-strip-step{font-size:10px;color:var(--t3);white-space:nowrap}
+.review-dots{display:flex;gap:3px;flex:1}
+.review-dot{height:4px;flex:1;border-radius:99px;background:var(--s4);transition:background .3s ease;max-width:28px}
+.review-dot.done{background:var(--green)}
+.review-dot.active{background:var(--ac)}
+.review-layout{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:14px;padding:14px 20px;align-items:start}
+@media(max-width:960px){.review-layout{grid-template-columns:1fr}}
+.review-left{display:flex;flex-direction:column;gap:12px}
+.review-right{position:sticky;top:14px;display:flex;flex-direction:column;gap:12px}
+.review-history{padding:0 20px 20px}
 
 /* Review */
 #state-review{flex-direction:column;padding:20px;gap:14px}
@@ -308,6 +403,20 @@ textarea{min-height:140px;line-height:1.6}
 .chip.green{background:var(--green-lo);color:var(--green)}
 .divider{height:1px;background:var(--bd);margin:8px 0}
 .spacer{flex:1}
+
+/* ─── Premium logo ──────────────────────────────────────────────────────────── */
+.logo-svg{display:block;flex-shrink:0}
+.ob-logo-svg{width:44px;height:44px;border-radius:11px;display:block;flex-shrink:0}
+/* Logo pulse when agent is running */
+@keyframes logoPulse{0%,100%{box-shadow:0 0 0 0 var(--ac-glow)}60%{box-shadow:0 0 0 8px transparent}}
+.logo-svg.running{animation:logoPulse 2s ease-in-out infinite}
+
+/* ─── Header controls (pause / restart) ────────────────────────────────────── */
+.app-controls{display:flex;align-items:center;gap:6px;margin-left:auto}
+.btn-sm{padding:5px 12px;font-size:12px;border-radius:var(--rs)}
+#btn-pause{min-width:88px}
+.pause-paused{background:var(--green-lo)!important;color:var(--green)!important;border-color:rgba(52,211,153,.3)!important}
+.pause-pending{background:var(--yellow-lo)!important;color:var(--yellow)!important;border-color:rgba(251,191,36,.3)!important}
 </style>
 </head>
 <body>
@@ -318,8 +427,8 @@ textarea{min-height:140px;line-height:1.6}
 <div id="screen-setup" class="screen ob active">
   <div class="ob-card">
     <div class="ob-logo">
-      <div class="ob-logo-icon">🎨</div>
-      <div><div class="ob-logo-text">Product Designer Agent</div><div class="ob-logo-sub">End-to-end UX design orchestration</div></div>
+      <div class="logo-mark logo-mark-lg">S</div>
+      <div><div class="ob-logo-text">Swetha's Product Design Agent</div><div class="ob-logo-sub">End-to-end UX design orchestration</div></div>
     </div>
     <div class="ob-progress"><div class="ob-dot active"></div><div class="ob-dot"></div><div class="ob-dot"></div></div>
     <div class="ob-step">Step 1 of 3</div>
@@ -346,8 +455,8 @@ textarea{min-height:140px;line-height:1.6}
 <div id="screen-brief" class="screen ob">
   <div class="ob-card" style="width:580px">
     <div class="ob-logo">
-      <div class="ob-logo-icon">🎨</div>
-      <div><div class="ob-logo-text">Product Designer Agent</div></div>
+      <div class="logo-mark logo-mark-lg">S</div>
+      <div><div class="ob-logo-text">Swetha's Product Design Agent</div></div>
     </div>
     <div class="ob-progress"><div class="ob-dot done"></div><div class="ob-dot active"></div><div class="ob-dot"></div></div>
     <div class="ob-step">Step 2 of 3</div>
@@ -368,61 +477,81 @@ textarea{min-height:140px;line-height:1.6}
 <!-- ║  SCREEN 3: Data choices                                              ║ -->
 <!-- ╚═══════════════════════════════════════════════════════════════════════╝ -->
 <div id="screen-data" class="screen ob">
-  <div class="ob-card" style="width:560px">
+  <div class="ob-card">
     <div class="ob-logo">
-      <div class="ob-logo-icon">🎨</div>
-      <div><div class="ob-logo-text">Product Designer Agent</div></div>
+      <div class="logo-mark logo-mark-lg">S</div>
+      <div><div class="ob-logo-text">Swetha's Product Design Agent</div></div>
     </div>
     <div class="ob-progress"><div class="ob-dot done"></div><div class="ob-dot done"></div><div class="ob-dot active"></div></div>
     <div class="ob-step">Step 3 of 3</div>
     <div class="ob-title">Research data</div>
     <div class="ob-desc">Tell the agent what data you already have. This determines which steps are skipped or simulated.</div>
 
-    <div class="field">
-      <label>User Interview Data</label>
+    <!-- User Interview Data Section -->
+    <div class="data-section">
+      <div class="data-section-header">
+        <div class="data-section-icon">👥</div>
+        <div>
+          <div class="data-section-title">User Interview Data</div>
+          <div class="data-section-sub">How should the agent handle qualitative research?</div>
+        </div>
+      </div>
       <div class="radio-group" id="rg-interviews">
         <label class="radio-card selected" data-val="have">
           <input type="radio" name="interviews" value="have" checked>
+          <div class="rc-icon">📋</div>
           <div class="radio-dot"></div>
-          <div><div class="radio-label">I have transcripts / notes</div><div class="radio-sub">Paste your data and the agent will synthesise it directly</div></div>
+          <div><div class="radio-label">I have data</div><div class="radio-sub">Paste transcripts or notes below</div></div>
         </label>
         <label class="radio-card" data-val="simulate">
           <input type="radio" name="interviews" value="simulate">
+          <div class="rc-icon">🤖</div>
           <div class="radio-dot"></div>
-          <div><div class="radio-label">Simulate interviews with AI</div><div class="radio-sub">The agent creates a realistic persona and runs a virtual session</div></div>
+          <div><div class="radio-label">Simulate with AI</div><div class="radio-sub">Agent creates a realistic persona &amp; runs a virtual session</div></div>
         </label>
         <label class="radio-card" data-val="skip">
           <input type="radio" name="interviews" value="skip">
+          <div class="rc-icon">⏭</div>
           <div class="radio-dot"></div>
-          <div><div class="radio-label">Skip interviews</div><div class="radio-sub">Synthesis will proceed with limited qualitative data</div></div>
+          <div><div class="radio-label">Skip interviews</div><div class="radio-sub">Proceed with limited qualitative data</div></div>
         </label>
       </div>
       <div class="data-paste" id="paste-interviews">
-        <textarea id="inp-interview-data" placeholder="Paste interview transcripts or notes here…" rows="5"></textarea>
+        <textarea id="inp-interview-data" placeholder="Paste interview transcripts or notes here…" rows="4"></textarea>
       </div>
     </div>
 
-    <div class="field">
-      <label>Usability Testing Data</label>
+    <!-- Usability Testing Data Section -->
+    <div class="data-section">
+      <div class="data-section-header">
+        <div class="data-section-icon">🖥</div>
+        <div>
+          <div class="data-section-title">Usability Testing Data</div>
+          <div class="data-section-sub">How should the agent handle usability validation?</div>
+        </div>
+      </div>
       <div class="radio-group" id="rg-usability">
         <label class="radio-card selected" data-val="have">
           <input type="radio" name="usability" value="have" checked>
+          <div class="rc-icon">📋</div>
           <div class="radio-dot"></div>
-          <div><div class="radio-label">I have usability session notes</div><div class="radio-sub">Paste your session data for the agent to analyse</div></div>
+          <div><div class="radio-label">I have data</div><div class="radio-sub">Paste session notes or recordings below</div></div>
         </label>
         <label class="radio-card" data-val="simulate">
           <input type="radio" name="usability" value="simulate">
+          <div class="rc-icon">🤖</div>
           <div class="radio-dot"></div>
-          <div><div class="radio-label">Simulate usability testing</div><div class="radio-sub">The agent plays a realistic participant and tests the prototype</div></div>
+          <div><div class="radio-label">Simulate testing</div><div class="radio-sub">Agent plays a realistic usability participant</div></div>
         </label>
         <label class="radio-card" data-val="skip">
           <input type="radio" name="usability" value="skip">
+          <div class="rc-icon">⏭</div>
           <div class="radio-dot"></div>
-          <div><div class="radio-label">Skip usability testing</div><div class="radio-sub">Produce a test guide only, without simulated sessions</div></div>
+          <div><div class="radio-label">Skip testing</div><div class="radio-sub">Generate a test guide only</div></div>
         </label>
       </div>
       <div class="data-paste" id="paste-usability">
-        <textarea id="inp-usability-data" placeholder="Paste usability session notes here…" rows="5"></textarea>
+        <textarea id="inp-usability-data" placeholder="Paste usability session notes here…" rows="4"></textarea>
       </div>
     </div>
 
@@ -441,13 +570,17 @@ textarea{min-height:140px;line-height:1.6}
   <!-- Header -->
   <header class="app-header">
     <div class="app-logo">
-      <div class="app-logo-icon">🎨</div>
-      <div class="app-logo-text">Product Designer Agent</div>
+      <div class="logo-mark logo-mark-sm" id="hdr-logo">S</div>
+      <div class="app-logo-text">Swetha's Product Design Agent</div>
       <span class="app-project" id="hdr-project"></span>
     </div>
     <div class="app-progress">
       <div class="progress-bar"><div class="progress-fill" id="prog-fill" style="width:0%"></div></div>
       <div class="progress-label" id="prog-label">Ready</div>
+    </div>
+    <div class="app-controls">
+      <button class="btn btn-ghost btn-sm" id="btn-pause" onclick="togglePause()" style="display:none">⏸ Pause</button>
+      <button class="btn btn-ghost btn-sm" id="btn-restart" onclick="restartAgent()" style="display:none">↩ Restart</button>
     </div>
     <div class="app-status">
       <div class="status-dot" id="status-dot"></div>
@@ -478,83 +611,157 @@ textarea{min-height:140px;line-height:1.6}
       <div id="state-idle" class="state active">
         <div class="idle-icon">🎨</div>
         <div class="idle-title">Ready to design</div>
-        <div class="idle-sub">The agent will start with the UX Research Plan and guide you through the full design process step by step.</div>
+        <div class="idle-sub">The agent will start with the Project Plan and guide you through the full design process step by step.</div>
       </div>
 
-      <!-- STATE: executing (streaming) -->
+      <!-- STATE: executing (dashboard) -->
       <div id="state-executing" class="state">
-        <div class="exec-header">
-          <span id="exec-label" class="exec-label">Executing…</span>
-          <div class="exec-status"><div class="status-dot running"></div><span id="exec-status-text">Generating…</span></div>
+
+        <!-- Stats strip -->
+        <div class="dash-strip">
+          <div class="dash-stat">
+            <div class="dash-stat-top">
+              <span class="dash-stat-value" id="dash-pct">0%</span>
+              <span class="dash-stat-label">Overall Progress</span>
+            </div>
+            <div class="dash-stat-bar"><div class="dash-stat-fill" id="dash-bar-fill"></div></div>
+          </div>
+          <div class="dash-stat">
+            <div class="dash-stat-top">
+              <span class="dash-stat-value" id="dash-steps">0/0</span>
+            </div>
+            <div class="dash-stat-label">Steps Done</div>
+          </div>
+          <div class="dash-stat">
+            <div class="dash-stat-top">
+              <span class="dash-stat-value" id="dash-qa">—</span>
+            </div>
+            <div class="dash-stat-label">QA Pass Rate</div>
+          </div>
+          <div class="dash-stat">
+            <div class="dash-stat-top">
+              <span class="dash-stat-value" id="dash-elapsed">0:00</span>
+            </div>
+            <div class="dash-stat-label">Elapsed</div>
+          </div>
         </div>
-        <div class="stream-box" id="stream-box"></div>
+
+        <!-- Current skill hero card -->
+        <div class="skill-hero-area">
+          <div class="skill-hero-card">
+            <div class="hero-icon" id="hero-icon">🔬</div>
+            <div class="skill-hero-content">
+              <div class="skill-hero-step" id="exec-step-label">Step 1 of 12</div>
+              <span id="exec-label">Project Plan</span>
+              <div class="skill-hero-status-row">
+                <div class="status-dot running"></div>
+                <span id="exec-status-text">Generating…</span>
+              </div>
+              <div class="skill-progress-track">
+                <div class="skill-progress-fill" id="exec-skill-bar"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Completed deliverables (shown once first skill is done) -->
+        <div class="deliverables-area" id="deliverables-area" style="display:none">
+          <div class="deliverables-heading">✅ Completed Deliverables</div>
+          <div class="deliverables-grid" id="deliverables-grid"></div>
+        </div>
+
+        <!-- Collapsible live output -->
+        <div class="live-toggle" id="live-toggle" onclick="toggleLiveOutput()">
+          <span class="live-arrow" id="live-arrow">▶</span>
+          <span id="live-toggle-text">Show live output</span>
+        </div>
+        <div class="stream-wrap" id="stream-wrap">
+          <div class="stream-box" id="stream-box"></div>
+        </div>
+
       </div>
 
       <!-- STATE: review -->
       <div id="state-review" class="state">
 
-        <!-- Output card -->
-        <div class="output-card">
-          <div class="output-card-header">
-            <span class="output-card-title" id="review-title">Output</span>
-            <div id="review-qa-badge" class="qa-badge"></div>
-          </div>
-          <div class="output-card-body">
-            <div class="md" id="review-output"></div>
-          </div>
-          <div class="output-card-footer">
-            <button class="btn btn-ghost" style="font-size:12px" onclick="downloadCurrent()">⬇ Download .md</button>
-            <button class="btn btn-ghost" style="font-size:12px" onclick="copyCurrent()">📋 Copy</button>
-          </div>
+        <!-- Progress strip -->
+        <div class="review-strip">
+          <span class="review-strip-label" id="review-title">Output</span>
+          <div class="review-dots" id="review-dots"></div>
+          <span class="review-strip-step">Step <span id="step-num">—</span> of <span id="step-total">—</span></span>
         </div>
 
-        <!-- QA panel -->
-        <div class="qa-panel" id="qa-panel">
-          <div class="qa-header">
-            <span class="qa-title">QA Assessment</span>
-            <div id="qa-badge-detail" class="qa-badge"></div>
-            <div style="flex:1"></div>
-            <span id="qa-alignment" class="chip" style="font-size:11px"></span>
-          </div>
-          <div class="qa-body">
-            <div>
-              <div class="qa-col-title issues">Issues Found</div>
-              <ul class="qa-list" id="qa-issues"></ul>
-            </div>
-            <div>
-              <div class="qa-col-title recs">Recommendations</div>
-              <ul class="qa-list" id="qa-recs"></ul>
-            </div>
-          </div>
-          <div class="qa-meta" id="qa-meta"></div>
-        </div>
+        <!-- 2-column layout -->
+        <div class="review-layout">
 
-        <!-- Approval -->
-        <div class="approval-section">
-          <div>
-            <div class="approval-title">👤 Human Approval Required</div>
-            <div class="approval-sub">Review the output and QA assessment above. You can approve it to continue, or request a revision with your feedback.</div>
+          <!-- Left: output + QA -->
+          <div class="review-left">
+
+            <div class="output-card">
+              <div class="output-card-header">
+                <span class="output-card-title">Output</span>
+                <div id="review-qa-badge" class="qa-badge"></div>
+                <button class="btn btn-ghost" style="font-size:11px;padding:5px 10px;margin-left:auto" onclick="downloadCurrent()">⬇ .md</button>
+                <button class="btn btn-ghost" style="font-size:11px;padding:5px 10px" onclick="copyCurrent()">📋 Copy</button>
+              </div>
+              <div class="output-card-body">
+                <div class="md" id="review-output"></div>
+              </div>
+            </div>
+
+            <div class="qa-panel" id="qa-panel">
+              <div class="qa-header">
+                <span class="qa-title">QA Assessment</span>
+                <div id="qa-badge-detail" class="qa-badge"></div>
+                <div style="flex:1"></div>
+                <span id="qa-alignment" class="chip" style="font-size:11px"></span>
+              </div>
+              <div class="qa-body">
+                <div>
+                  <div class="qa-col-title issues">Issues Found</div>
+                  <ul class="qa-list" id="qa-issues"></ul>
+                </div>
+                <div>
+                  <div class="qa-col-title recs">Recommendations</div>
+                  <ul class="qa-list" id="qa-recs"></ul>
+                </div>
+              </div>
+              <div class="qa-meta" id="qa-meta"></div>
+            </div>
+
           </div>
-          <div class="field" style="margin:0">
-            <label>Suggestions or improvements <span style="color:var(--t3);font-weight:400">(optional)</span></label>
-            <textarea id="inp-suggestions" placeholder="Any notes for improvement, changes you'd like to see, or things to add…" rows="3"></textarea>
-          </div>
-          <div class="feedback-area" id="feedback-area">
-            <div class="field" style="margin:0">
-              <label>Revision feedback <span style="color:var(--red)">*</span></label>
-              <textarea id="inp-feedback" placeholder="Describe what needs to change in this revision…" rows="3"></textarea>
+
+          <!-- Right: approval (sticky) -->
+          <div class="review-right">
+            <div class="approval-section">
+              <div>
+                <div class="approval-title">👤 Your Approval</div>
+                <div class="approval-sub">Review the output and QA results. Approve to continue or request changes.</div>
+              </div>
+              <div class="field" style="margin:0">
+                <label>Suggestions <span style="color:var(--t3);font-weight:400">(optional)</span></label>
+                <textarea id="inp-suggestions" placeholder="Any improvements or changes to note…" rows="3"></textarea>
+              </div>
+              <div class="feedback-area" id="feedback-area">
+                <div class="field" style="margin:0">
+                  <label>Revision feedback <span style="color:var(--red)">*</span></label>
+                  <textarea id="inp-feedback" placeholder="Describe what needs to change…" rows="3"></textarea>
+                </div>
+              </div>
+              <div class="approval-actions">
+                <button class="btn btn-success" id="btn-approve" onclick="handleApprove()">✅ Approve &amp; Continue</button>
+                <button class="btn btn-warn" id="btn-revise" onclick="handleRevise()">🔄 Revise</button>
+                <span class="approval-hint" id="approval-hint"></span>
+              </div>
             </div>
           </div>
-          <div class="approval-actions">
-            <button class="btn btn-success" id="btn-approve" onclick="handleApprove()">✅ Approve &amp; Continue</button>
-            <button class="btn btn-warn" id="btn-revise" onclick="handleRevise()">🔄 Request Revision</button>
-            <span class="approval-hint" id="approval-hint">Step <span id="step-num">—</span> of <span id="step-total">—</span></span>
-          </div>
-        </div>
 
-        <!-- History of previous outputs -->
-        <div class="history-accordion" id="history-accordion"></div>
-        <div style="height:20px"></div>
+        </div><!-- /review-layout -->
+
+        <!-- History -->
+        <div class="review-history">
+          <div class="history-accordion" id="history-accordion"></div>
+        </div>
 
       </div><!-- /state-review -->
 
@@ -628,7 +835,7 @@ const SKILL_SEQ = [
   'ux_usability_test_guide','simulated_usability_participant'
 ];
 const SKILL_NAMES = {
-  research_plan:'UX Research Plan', ux_literature_review:'Literature Review',
+  research_plan:'Project Plan', ux_literature_review:'Literature Review',
   competitor_analysis:'Competitor Analysis', ux_interview_guide:'Interview Guide',
   simulated_interviewee:'Simulated Interviews', uxr_synthesis:'UXR Synthesis',
   ux_ideation:'Design Ideation', prd_generator:'Product Requirements (PRD)',
@@ -637,6 +844,165 @@ const SKILL_NAMES = {
   ux_prototype_generator:'Interactive Prototype', ux_usability_test_guide:'Usability Test Guide',
   simulated_usability_participant:'Simulated Usability Testing'
 };
+const SKILL_ICONS = {
+  research_plan:'🔬', ux_literature_review:'📚', competitor_analysis:'🏆',
+  ux_interview_guide:'🎤', simulated_interviewee:'🤖', uxr_synthesis:'🧩',
+  ux_ideation:'💡', prd_generator:'📋', ux_user_flow:'🗺️',
+  ux_information_architecture:'🏗️', ux_brand_guidelines:'🎨', ux_design_system:'⚙️',
+  ux_prototype_generator:'🖥️', ux_usability_test_guide:'🧪',
+  simulated_usability_participant:'👤'
+};
+
+// ── Dashboard helpers ──────────────────────────────────────────────────────────
+let _timerInterval = null;
+let _startTime = null;
+
+function startTimer(){
+  _startTime = Date.now();
+  _timerInterval && clearInterval(_timerInterval);
+  _timerInterval = setInterval(()=>{
+    const s = Math.floor((Date.now()-_startTime)/1000);
+    const m = Math.floor(s/60), sec = s%60;
+    const el = document.getElementById('dash-elapsed');
+    if(el) el.textContent = m+':'+(sec<10?'0':'')+sec;
+  },1000);
+}
+
+function updateDashStats(){
+  const total = S.todoList.length||0;
+  const done = S.totalCompleted;
+  const pct = total>0 ? Math.round(done/total*100) : 0;
+  const qaArr = Object.values(S.skillMeta).filter(m=>m.qa);
+  const passes = qaArr.filter(m=>m.qa.score==='PASS').length;
+  const qaRate = qaArr.length>0 ? Math.round(passes/qaArr.length*100)+'%' : '—';
+
+  const $ = id => document.getElementById(id);
+  if($('dash-pct')) $('dash-pct').textContent = pct+'%';
+  if($('dash-steps')) $('dash-steps').textContent = done+'/'+total;
+  if($('dash-qa')) $('dash-qa').textContent = qaRate;
+  if($('dash-bar-fill')) $('dash-bar-fill').style.width = pct+'%';
+  // Keep header progress in sync
+  $('prog-fill').style.width = pct+'%';
+  $('prog-label').textContent = done+' / '+total+' steps';
+}
+
+function addDeliverableCard(skillName, qaScore){
+  const grid = document.getElementById('deliverables-grid');
+  const area = document.getElementById('deliverables-area');
+  if(!grid) return;
+  const name = SKILL_NAMES[skillName]||skillName;
+  const icon = SKILL_ICONS[skillName]||'📄';
+  const scoreLabel = qaScore==='PASS'?'✓ Pass':qaScore==='NEEDS_IMPROVEMENT'?'~ Review':qaScore==='FAIL'?'✗ Fail':'';
+  const card = document.createElement('div');
+  card.className='deliv-card';
+  card.onclick = ()=>viewSkillOutput(skillName);
+  card.innerHTML = `<div class="deliv-icon">${icon}</div><div class="deliv-name">${name}</div>`
+    +(qaScore?`<span class="deliv-qa ${qaScore}">${scoreLabel}</span>`:'');
+  grid.appendChild(card);
+  if(area) area.style.display='';
+}
+
+function toggleLiveOutput(){
+  const wrap = document.getElementById('stream-wrap');
+  const toggle = document.getElementById('live-toggle');
+  const text = document.getElementById('live-toggle-text');
+  const open = toggle.classList.toggle('open');
+  wrap.classList.toggle('open', open);
+  text.textContent = open ? 'Hide live output' : 'Show live output';
+}
+
+function updateReviewStrip(skillName){
+  const dotsEl = document.getElementById('review-dots');
+  if(!dotsEl||!S.todoList.length) return;
+  const idx = S.todoList.indexOf(skillName);
+  dotsEl.innerHTML = S.todoList.slice(0,Math.min(S.todoList.length,20)).map((s,i)=>{
+    const cls = i<idx?'done':i===idx?'active':'';
+    return `<div class="review-dot ${cls}" title="${SKILL_NAMES[s]||s}"></div>`;
+  }).join('');
+}
+
+// ── Pause / Resume / Restart ──────────────────────────────────────────────────
+function updatePauseBtn(){
+  const btn = document.getElementById('btn-pause');
+  if(!btn) return;
+  if(S.paused){
+    btn.textContent='▶ Resume';
+    btn.className='btn btn-sm pause-paused';
+  } else if(S.pauseRequested){
+    btn.textContent='⏸ Pausing…';
+    btn.className='btn btn-sm pause-pending';
+  } else {
+    btn.textContent='⏸ Pause';
+    btn.className='btn btn-ghost btn-sm';
+  }
+}
+
+function togglePause(){
+  if(S.paused){
+    S.paused=false; S.pauseRequested=false;
+    updatePauseBtn();
+    const logo=document.getElementById('hdr-logo');
+    if(logo) logo.classList.add('running');
+    setStatus('running','Resuming…');
+    toast('Resumed ▶','info');
+  } else {
+    S.pauseRequested=true;
+    updatePauseBtn();
+    toast('Will pause after current step…','warn');
+  }
+}
+
+async function checkPause(){
+  if(S.pauseRequested){
+    S.paused=true; S.pauseRequested=false;
+    updatePauseBtn();
+    const logo=document.getElementById('hdr-logo');
+    if(logo) logo.classList.remove('running');
+    setStatus('idle','Paused');
+    toast('Agent paused — press Resume to continue.','warn');
+    while(S.paused) await sleep(500);
+    setStatus('running','Resuming…');
+    if(logo) logo.classList.add('running');
+  }
+}
+
+function restartAgent(){
+  if(!confirm('Restart from the beginning? All current progress will be cleared.')) return;
+  // Stop timer
+  if(_timerInterval){ clearInterval(_timerInterval); _timerInterval=null; }
+  // Reset state
+  S.paused=false; S.pauseRequested=false;
+  S.todoList=[]; S.context={}; S.skillMeta={};
+  S.logbook=[]; S.logbookSummary=''; S.logbookContext='';
+  S.totalCompleted=0; S.currentSkillIdx=-1; S.approvalResolve=null;
+  // Hide controls
+  const pauseBtn=document.getElementById('btn-pause');
+  const restartBtn=document.getElementById('btn-restart');
+  if(pauseBtn){ pauseBtn.style.display='none'; pauseBtn.textContent='⏸ Pause'; pauseBtn.className='btn btn-ghost btn-sm'; }
+  if(restartBtn) restartBtn.style.display='none';
+  // Reset logo pulse
+  const logo=document.getElementById('hdr-logo');
+  if(logo) logo.classList.remove('running');
+  // Reset header progress
+  const progFill=document.getElementById('prog-fill');
+  const progLabel=document.getElementById('prog-label');
+  if(progFill) progFill.style.width='0%';
+  if(progLabel) progLabel.textContent='Ready';
+  // Clear deliverables grid
+  const grid=document.getElementById('deliverables-grid');
+  if(grid) grid.innerHTML='';
+  const area=document.getElementById('deliverables-area');
+  if(area) area.style.display='none';
+  // Reset dash stats
+  const ids=['dash-pct','dash-steps','dash-qa','dash-elapsed'];
+  ids.forEach((id,i)=>{ const el=document.getElementById(id); if(el) el.textContent=['0%','0/0','—','0:00'][i]; });
+  const fill=document.getElementById('dash-bar-fill');
+  if(fill) fill.style.width='0%';
+  // Navigate back to brief screen
+  showScreen('screen-brief');
+  setStatus('idle','Idle');
+  toast('Agent restarted — enter a new project brief.','info');
+}
 
 // ── State ────────────────────────────────────────────────────────────────────
 const S = {
@@ -646,7 +1012,8 @@ const S = {
   todoList:[], currentSkillIdx:-1,
   context:{}, skillMeta:{},  // skill -> {status,qa,iterations,output}
   logbook:[], logbookSummary:'',
-  approvalResolve:null, totalCompleted:0
+  approvalResolve:null, totalCompleted:0,
+  paused:false, pauseRequested:false
 };
 
 // ── Screen router ─────────────────────────────────────────────────────────────
@@ -703,8 +1070,16 @@ async function startAgent(){
   document.getElementById('hdr-project').textContent=S.projectName;
   setStatus('running','Initialising…');
   showState('state-idle');
+  startTimer();
+  // Show controls + animate logo
+  const pauseBtn=document.getElementById('btn-pause');
+  const restartBtn=document.getElementById('btn-restart');
+  if(pauseBtn) pauseBtn.style.display='';
+  if(restartBtn) restartBtn.style.display='';
+  const logo=document.getElementById('hdr-logo');
+  if(logo) logo.classList.add('running');
   addLog('SESSION_START','Agent session started',{project:S.projectName});
-  toast('Agent started — running UX Research Plan first.','info');
+  toast('Agent started — generating Project Plan first.','info');
 
   // Small delay for UI to settle
   await sleep(600);
@@ -724,6 +1099,7 @@ async function runWorkflow(){
     S.todoList=res.todo||SKILL_SEQ;
     renderSidebar(S.todoList);
     updateProgress(0,S.todoList.length);
+    updateDashStats();
     toast('Research plan approved — workflow plan ready.','success');
     addLog('PLAN_PARSED','Workflow plan extracted',{skills:S.todoList});
 
@@ -736,6 +1112,7 @@ async function runWorkflow(){
         addLog('SKILL_SKIP',`Skipped: ${skill}`,{reason:'User data provided or simulation declined'});
         continue;
       }
+      await checkPause();
       await executeSkillAndApprove(skill);
       updateProgress(S.totalCompleted,S.todoList.length);
     }
@@ -743,10 +1120,18 @@ async function runWorkflow(){
     // 4. Generate logbook
     await generateLogbook();
 
+    // Workflow complete — stop logo pulse, hide pause button
+    const logoEl=document.getElementById('hdr-logo');
+    if(logoEl) logoEl.classList.remove('running');
+    const pb=document.getElementById('btn-pause');
+    if(pb) pb.style.display='none';
+
   }catch(e){
     console.error(e);
     toast('An error occurred: '+e.message,'error');
     setStatus('idle','Error');
+    const logoEl2=document.getElementById('hdr-logo');
+    if(logoEl2) logoEl2.classList.remove('running');
   }
 }
 
@@ -800,6 +1185,8 @@ async function executeSkillAndApprove(skillName){
       setSkillStatus(skillName,'completed',qa.score);
       addLog('SKILL_COMPLETE','Completed: '+skillName,{skill:skillName,qa_score:qa.score,iterations,approved:true});
       addHistoryItem(skillName,output,qa);
+      addDeliverableCard(skillName,qa.score);
+      updateDashStats();
       toast(display+' approved ✅','success');
       break;
     }else{
@@ -818,6 +1205,14 @@ async function streamSkill(skillName,feedback=null){
   showState('state-executing');
   document.getElementById('exec-label').textContent=display;
   document.getElementById('exec-status-text').textContent='Generating…';
+  // Update hero card
+  const heroIcon=document.getElementById('hero-icon');
+  if(heroIcon) heroIcon.textContent=SKILL_ICONS[skillName]||'📄';
+  const stepLabel=document.getElementById('exec-step-label');
+  if(stepLabel){
+    const idx=S.todoList.indexOf(skillName);
+    stepLabel.textContent=idx>=0?`Step ${idx+1} of ${S.todoList.length}`:'Running';
+  }
   const box=document.getElementById('stream-box');
   box.innerHTML='';
 
@@ -882,6 +1277,8 @@ function showReviewState(skillName,output,qa,iterations){
   document.getElementById('review-title').textContent=display;
   document.getElementById('step-num').textContent=S.todoList.indexOf(skillName)+1;
   document.getElementById('step-total').textContent=S.todoList.length;
+  updateReviewStrip(skillName);
+  updateDashStats();
 
   // Render markdown output
   const outEl=document.getElementById('review-output');

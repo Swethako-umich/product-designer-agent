@@ -29,7 +29,7 @@ app.add_middleware(
 
 # ── Paths ─────────────────────────────────────────────────────────────────────
 BASE_DIR   = Path(__file__).parent
-SKILLS_DIR = BASE_DIR.parent / "product-designer-agent" / "skills"
+SKILLS_DIR = BASE_DIR.parent / "skills"
 
 SKILL_SEQUENCE = [
     "research_plan", "ux_literature_review", "competitor_analysis",
