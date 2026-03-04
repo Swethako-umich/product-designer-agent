@@ -1,0 +1,1139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Product Designer Agent</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<style>
+/* ─── Reset & Base ─────────────────────────────────────────────────────────── */
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow:hidden;font-family:'Inter',sans-serif;font-size:14px}
+
+/* ─── Design tokens ────────────────────────────────────────────────────────── */
+:root{
+  --bg:#09090F;
+  --s1:#111119;
+  --s2:#181824;
+  --s3:#1E1E2D;
+  --s4:#262636;
+  --bd:rgba(255,255,255,.07);
+  --bd2:rgba(255,255,255,.13);
+  --ac:#7B5FF5;
+  --ac-lo:rgba(123,95,245,.15);
+  --ac-glow:rgba(123,95,245,.35);
+  --teal:#00C4E0;
+  --green:#34D399;
+  --green-lo:rgba(52,211,153,.15);
+  --yellow:#FBBF24;
+  --yellow-lo:rgba(251,191,36,.15);
+  --red:#F87171;
+  --red-lo:rgba(248,113,113,.15);
+  --t1:#EEEEF8;
+  --t2:#8888AA;
+  --t3:#505070;
+  --r:12px;--rs:8px;--rx:4px;
+  --trans:0.15s ease;
+}
+
+/* ─── Typography ───────────────────────────────────────────────────────────── */
+h1{font-size:22px;font-weight:700;color:var(--t1)}
+h2{font-size:17px;font-weight:600;color:var(--t1)}
+h3{font-size:14px;font-weight:600;color:var(--t1)}
+p{color:var(--t2);line-height:1.6}
+a{color:var(--ac);text-decoration:none}
+code{font-family:'JetBrains Mono',monospace;font-size:13px}
+
+/* ─── Scrollbar ─────────────────────────────────────────────────────────────── */
+::-webkit-scrollbar{width:5px;height:5px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--s4);border-radius:99px}
+::-webkit-scrollbar-thumb:hover{background:var(--t3)}
+
+/* ─── Screens ───────────────────────────────────────────────────────────────── */
+.screen{display:none;width:100vw;height:100vh}
+.screen.active{display:flex}
+
+/* ─── Onboarding screens ────────────────────────────────────────────────────── */
+.ob{flex-direction:column;align-items:center;justify-content:center;background:var(--bg);position:relative;overflow:hidden}
+.ob::before{content:'';position:absolute;width:600px;height:600px;border-radius:50%;background:radial-gradient(circle,var(--ac-glow) 0%,transparent 70%);top:-200px;left:50%;transform:translateX(-50%);pointer-events:none}
+.ob-card{background:var(--s1);border:1px solid var(--bd2);border-radius:var(--r);padding:40px;width:520px;max-width:92vw;position:relative;z-index:1}
+.ob-logo{display:flex;align-items:center;gap:10px;margin-bottom:28px}
+.ob-logo-icon{width:40px;height:40px;border-radius:10px;background:linear-gradient(135deg,var(--ac),var(--teal));display:flex;align-items:center;justify-content:center;font-size:20px}
+.ob-logo-text{font-size:18px;font-weight:700;color:var(--t1)}
+.ob-logo-sub{font-size:12px;color:var(--t3);margin-top:1px}
+.ob-step{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.1em;color:var(--t3);margin-bottom:8px}
+.ob-title{font-size:22px;font-weight:700;color:var(--t1);margin-bottom:6px}
+.ob-desc{font-size:14px;color:var(--t2);line-height:1.6;margin-bottom:28px}
+.ob-progress{display:flex;gap:6px;margin-bottom:28px}
+.ob-dot{width:6px;height:6px;border-radius:50%;background:var(--s4);transition:var(--trans)}
+.ob-dot.done{background:var(--ac)}
+.ob-dot.active{background:var(--ac);box-shadow:0 0 8px var(--ac-glow);width:20px;border-radius:3px}
+
+/* ─── Form elements ─────────────────────────────────────────────────────────── */
+.field{margin-bottom:18px}
+.field label{display:block;font-size:12px;font-weight:600;color:var(--t2);margin-bottom:6px;text-transform:uppercase;letter-spacing:.06em}
+.field-hint{font-size:11px;color:var(--t3);margin-top:4px}
+input[type=text],input[type=password],textarea,select{
+  width:100%;background:var(--s2);border:1px solid var(--bd2);border-radius:var(--rs);
+  padding:10px 14px;color:var(--t1);font-family:inherit;font-size:14px;
+  transition:border-color var(--trans),box-shadow var(--trans);outline:none;resize:vertical
+}
+input[type=text]:focus,input[type=password]:focus,textarea:focus,select:focus{
+  border-color:var(--ac);box-shadow:0 0 0 3px var(--ac-lo)
+}
+input[type=text]::placeholder,textarea::placeholder{color:var(--t3)}
+textarea{min-height:140px;line-height:1.6}
+
+/* ─── Radio cards ───────────────────────────────────────────────────────────── */
+.radio-group{display:flex;flex-direction:column;gap:8px}
+.radio-card{display:flex;align-items:flex-start;gap:12px;padding:12px 14px;background:var(--s2);border:1px solid var(--bd);border-radius:var(--rs);cursor:pointer;transition:var(--trans)}
+.radio-card:hover{border-color:var(--bd2);background:var(--s3)}
+.radio-card.selected{border-color:var(--ac);background:var(--ac-lo)}
+.radio-card input[type=radio]{display:none}
+.radio-dot{width:18px;height:18px;border-radius:50%;border:2px solid var(--t3);flex-shrink:0;margin-top:1px;display:flex;align-items:center;justify-content:center;transition:var(--trans)}
+.radio-card.selected .radio-dot{border-color:var(--ac);background:var(--ac)}
+.radio-dot::after{content:'';width:6px;height:6px;border-radius:50%;background:white;display:none}
+.radio-card.selected .radio-dot::after{display:block}
+.radio-label{font-size:13px;font-weight:500;color:var(--t1)}
+.radio-sub{font-size:12px;color:var(--t2);margin-top:2px}
+
+/* Data textarea (shown conditionally) */
+.data-paste{margin-top:10px;display:none}
+.data-paste.visible{display:block}
+
+/* ─── Buttons ───────────────────────────────────────────────────────────────── */
+.btn{display:inline-flex;align-items:center;gap:7px;padding:9px 18px;border-radius:var(--rs);font-size:13px;font-weight:600;cursor:pointer;border:none;transition:var(--trans);font-family:inherit}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+.btn-primary{background:var(--ac);color:#fff}
+.btn-primary:hover:not(:disabled){background:#8B6FF8;box-shadow:0 0 16px var(--ac-glow)}
+.btn-ghost{background:transparent;color:var(--t2);border:1px solid var(--bd2)}
+.btn-ghost:hover:not(:disabled){background:var(--s2);color:var(--t1)}
+.btn-success{background:var(--green-lo);color:var(--green);border:1px solid rgba(52,211,153,.3)}
+.btn-success:hover:not(:disabled){background:rgba(52,211,153,.22)}
+.btn-warn{background:var(--red-lo);color:var(--red);border:1px solid rgba(248,113,113,.3)}
+.btn-warn:hover:not(:disabled){background:rgba(248,113,113,.22)}
+.btn-icon{padding:7px;border-radius:var(--rs);width:32px;height:32px;justify-content:center}
+.ob-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:24px}
+
+/* ─── Main app layout ───────────────────────────────────────────────────────── */
+#screen-main{flex-direction:column;background:var(--bg)}
+.app-header{display:flex;align-items:center;gap:14px;padding:0 20px;height:52px;border-bottom:1px solid var(--bd);background:var(--s1);flex-shrink:0;z-index:10}
+.app-logo{display:flex;align-items:center;gap:8px}
+.app-logo-icon{width:28px;height:28px;border-radius:7px;background:linear-gradient(135deg,var(--ac),var(--teal));display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0}
+.app-logo-text{font-size:13px;font-weight:700;color:var(--t1)}
+.app-project{font-size:12px;color:var(--t3);margin-left:4px}
+.app-progress{flex:1;max-width:300px;margin:0 auto}
+.progress-bar{height:4px;background:var(--s4);border-radius:99px;overflow:hidden}
+.progress-fill{height:100%;background:linear-gradient(90deg,var(--ac),var(--teal));border-radius:99px;transition:width .4s ease}
+.progress-label{font-size:11px;color:var(--t3);text-align:center;margin-top:4px}
+.app-status{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--t2);margin-left:auto}
+.status-dot{width:7px;height:7px;border-radius:50%;background:var(--t3)}
+.status-dot.running{background:var(--ac);animation:pulse 1.2s infinite}
+.status-dot.done{background:var(--green)}
+
+/* ─── App body ──────────────────────────────────────────────────────────────── */
+.app-body{display:flex;flex:1;overflow:hidden}
+
+/* ─── Sidebar ───────────────────────────────────────────────────────────────── */
+#sidebar{width:252px;flex-shrink:0;background:var(--s1);border-right:1px solid var(--bd);display:flex;flex-direction:column;overflow:hidden}
+.sidebar-section{padding:12px 8px 6px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--t3);padding-left:16px}
+.sidebar-skills{flex:1;overflow-y:auto;padding-bottom:8px}
+.skill-row{display:flex;align-items:center;gap:9px;padding:8px 12px;margin:1px 6px;border-radius:var(--rs);cursor:pointer;transition:var(--trans);position:relative}
+.skill-row:hover{background:var(--s3)}
+.skill-row.active{background:var(--ac-lo)}
+.skill-row.active::before{content:'';position:absolute;left:0;top:50%;transform:translateY(-50%);width:3px;height:60%;background:var(--ac);border-radius:0 2px 2px 0}
+.skill-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;transition:var(--trans)}
+.skill-dot.pending{background:var(--s4)}
+.skill-dot.running{background:var(--ac);box-shadow:0 0 6px var(--ac);animation:pulse 1s infinite}
+.skill-dot.completed{background:var(--green)}
+.skill-dot.skipped{background:var(--t3);opacity:.5}
+.skill-dot.failed{background:var(--red)}
+.skill-name{font-size:12px;color:var(--t2);flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.skill-row.active .skill-name{color:var(--t1);font-weight:500}
+.skill-row.completed .skill-name{color:var(--t1)}
+.skill-qa{font-size:10px;font-weight:600;padding:1px 6px;border-radius:99px}
+.skill-qa.PASS{background:var(--green-lo);color:var(--green)}
+.skill-qa.NEEDS_IMPROVEMENT{background:var(--yellow-lo);color:var(--yellow)}
+.skill-qa.FAIL{background:var(--red-lo);color:var(--red)}
+
+/* Logbook toggle */
+.sidebar-log-btn{display:flex;align-items:center;gap:8px;padding:10px 16px;cursor:pointer;border-top:1px solid var(--bd);font-size:12px;color:var(--t2);transition:var(--trans);flex-shrink:0}
+.sidebar-log-btn:hover{color:var(--t1);background:var(--s2)}
+.log-count{background:var(--ac-lo);color:var(--ac);font-size:10px;font-weight:700;padding:1px 7px;border-radius:99px;margin-left:auto}
+
+/* ─── Main content ──────────────────────────────────────────────────────────── */
+#main-content{flex:1;overflow-y:auto;display:flex;flex-direction:column}
+
+/* ─── States ────────────────────────────────────────────────────────────────── */
+.state{display:none;flex-direction:column;flex:1}
+.state.active{display:flex}
+
+/* Idle */
+#state-idle{align-items:center;justify-content:center;gap:16px;padding:40px}
+.idle-icon{width:64px;height:64px;border-radius:16px;background:var(--s2);display:flex;align-items:center;justify-content:center;font-size:30px}
+.idle-title{font-size:20px;font-weight:700;color:var(--t1)}
+.idle-sub{font-size:14px;color:var(--t2);text-align:center;max-width:400px;line-height:1.6}
+
+/* Executing (streaming) */
+#state-executing{flex-direction:column;padding:20px;gap:14px}
+.exec-header{display:flex;align-items:center;gap:10px;padding:12px 16px;background:var(--s2);border:1px solid var(--bd);border-radius:var(--rs)}
+.exec-label{font-size:13px;font-weight:600;color:var(--t1)}
+.exec-status{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--ac);margin-left:auto}
+.stream-box{flex:1;background:var(--s1);border:1px solid var(--bd);border-radius:var(--r);padding:20px;overflow-y:auto;font-family:'JetBrains Mono',monospace;font-size:13px;line-height:1.7;color:var(--t2);white-space:pre-wrap;word-break:break-word;min-height:300px}
+.cursor{display:inline-block;width:8px;height:16px;background:var(--ac);vertical-align:text-bottom;animation:blink .7s infinite}
+
+/* Review */
+#state-review{flex-direction:column;padding:20px;gap:14px}
+.output-card{background:var(--s1);border:1px solid var(--bd);border-radius:var(--r);overflow:hidden}
+.output-card-header{display:flex;align-items:center;gap:10px;padding:14px 18px;background:var(--s2);border-bottom:1px solid var(--bd)}
+.output-card-title{font-size:14px;font-weight:600;color:var(--t1);flex:1}
+.output-card-body{padding:24px;max-height:50vh;overflow-y:auto}
+.output-card-footer{display:flex;align-items:center;gap:8px;padding:12px 18px;background:var(--s2);border-top:1px solid var(--bd)}
+
+/* QA panel */
+.qa-panel{background:var(--s1);border:1px solid var(--bd);border-radius:var(--r);overflow:hidden}
+.qa-header{display:flex;align-items:center;gap:10px;padding:12px 18px;border-bottom:1px solid var(--bd)}
+.qa-title{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--t2)}
+.qa-badge{display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:99px;font-size:11px;font-weight:700}
+.qa-badge.PASS{background:var(--green-lo);color:var(--green);border:1px solid rgba(52,211,153,.3)}
+.qa-badge.NEEDS_IMPROVEMENT{background:var(--yellow-lo);color:var(--yellow);border:1px solid rgba(251,191,36,.3)}
+.qa-badge.FAIL{background:var(--red-lo);color:var(--red);border:1px solid rgba(248,113,113,.3)}
+.qa-body{padding:14px 18px;display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.qa-col-title{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px}
+.qa-col-title.issues{color:var(--red)}
+.qa-col-title.recs{color:var(--yellow)}
+.qa-list{list-style:none;display:flex;flex-direction:column;gap:4px}
+.qa-list li{font-size:12px;color:var(--t2);line-height:1.5;padding-left:14px;position:relative}
+.qa-list li::before{content:'•';position:absolute;left:0;color:var(--t3)}
+.qa-meta{font-size:11px;color:var(--t3);padding:8px 18px;border-top:1px solid var(--bd)}
+
+/* Approval section */
+.approval-section{background:var(--s1);border:1px solid var(--bd2);border-radius:var(--r);padding:18px;display:flex;flex-direction:column;gap:12px}
+.approval-title{font-size:13px;font-weight:600;color:var(--t1)}
+.approval-sub{font-size:12px;color:var(--t2)}
+.feedback-area{display:none}
+.feedback-area.visible{display:block}
+.feedback-area textarea{min-height:80px}
+.approval-actions{display:flex;gap:10px;align-items:center}
+.approval-hint{font-size:11px;color:var(--t3);margin-left:auto}
+
+/* Logbook state */
+#state-logbook{flex-direction:column;padding:20px;gap:14px}
+.logbook-card{background:var(--s1);border:1px solid var(--bd);border-radius:var(--r);overflow:hidden;flex:1}
+.logbook-header{display:flex;align-items:center;gap:10px;padding:14px 18px;background:var(--s2);border-bottom:1px solid var(--bd)}
+.logbook-body{padding:24px;overflow-y:auto;max-height:calc(100vh - 280px)}
+
+/* Done */
+#state-done{align-items:center;justify-content:center;flex-direction:column;gap:16px;padding:40px}
+.done-icon{font-size:48px}
+.done-title{font-size:22px;font-weight:700;color:var(--t1)}
+.done-sub{font-size:14px;color:var(--t2);text-align:center;max-width:400px;line-height:1.6}
+.done-stats{display:flex;gap:20px;margin-top:8px}
+.done-stat{text-align:center}
+.done-stat-n{font-size:24px;font-weight:700;color:var(--ac)}
+.done-stat-l{font-size:11px;color:var(--t3);margin-top:2px}
+
+/* ─── Logbook drawer ────────────────────────────────────────────────────────── */
+#log-drawer{position:fixed;right:0;top:52px;bottom:0;width:320px;background:var(--s1);border-left:1px solid var(--bd);overflow-y:auto;z-index:20;transform:translateX(100%);transition:transform .25s ease}
+#log-drawer.open{transform:translateX(0)}
+.log-drawer-header{display:flex;align-items:center;padding:14px 16px;border-bottom:1px solid var(--bd);background:var(--s2)}
+.log-drawer-title{font-size:13px;font-weight:600;color:var(--t1);flex:1}
+.log-entries{padding:12px;display:flex;flex-direction:column;gap:6px}
+.log-entry{padding:10px 12px;background:var(--s2);border-radius:var(--rs);border-left:2px solid var(--s4)}
+.log-entry.LEARNING{border-left-color:var(--ac)}
+.log-entry.SKILL_COMPLETE{border-left-color:var(--green)}
+.log-entry.QA_RESULT.FAIL{border-left-color:var(--red)}
+.log-entry.USER_FEEDBACK{border-left-color:var(--yellow)}
+.log-entry-type{font-size:10px;font-weight:700;text-transform:uppercase;color:var(--t3);margin-bottom:3px}
+.log-entry-desc{font-size:12px;color:var(--t2);line-height:1.5}
+.log-entry-time{font-size:10px;color:var(--t3);margin-top:3px}
+
+/* ─── Markdown styles ───────────────────────────────────────────────────────── */
+.md h1{font-size:20px;font-weight:700;color:var(--t1);margin:20px 0 10px}
+.md h2{font-size:17px;font-weight:600;color:var(--t1);margin:18px 0 8px;padding-bottom:6px;border-bottom:1px solid var(--bd)}
+.md h3{font-size:14px;font-weight:600;color:var(--t1);margin:14px 0 6px}
+.md h4{font-size:13px;font-weight:600;color:var(--t2);margin:12px 0 5px}
+.md p{color:var(--t2);line-height:1.7;margin-bottom:10px}
+.md ul,.md ol{color:var(--t2);padding-left:20px;margin-bottom:10px}
+.md li{line-height:1.7;margin-bottom:3px}
+.md strong{color:var(--t1);font-weight:600}
+.md em{color:var(--teal);font-style:italic}
+.md code{background:var(--s3);padding:1px 6px;border-radius:4px;font-family:'JetBrains Mono',monospace;font-size:12px;color:#C9D1D9}
+.md pre{background:var(--s3);border:1px solid var(--bd2);border-radius:var(--rs);padding:14px 16px;overflow-x:auto;margin-bottom:12px}
+.md pre code{background:none;padding:0;font-size:12px;color:#E6EDF3}
+.md table{width:100%;border-collapse:collapse;margin-bottom:14px;font-size:13px}
+.md th{background:var(--s3);color:var(--t1);padding:8px 12px;text-align:left;font-weight:600;border:1px solid var(--bd2)}
+.md td{padding:7px 12px;border:1px solid var(--bd);color:var(--t2)}
+.md tr:nth-child(even) td{background:var(--s2)}
+.md blockquote{border-left:3px solid var(--ac);padding:8px 14px;margin:8px 0;background:var(--ac-lo);border-radius:0 var(--rx) var(--rx) 0}
+.md blockquote p{color:var(--t1);margin-bottom:0}
+.md hr{border:none;border-top:1px solid var(--bd);margin:16px 0}
+.md a{color:var(--ac)}
+.md .mermaid{background:var(--s2);border:1px solid var(--bd);border-radius:var(--rs);padding:16px;margin:10px 0;overflow-x:auto}
+
+/* ─── Toast ─────────────────────────────────────────────────────────────────── */
+#toasts{position:fixed;bottom:20px;right:20px;display:flex;flex-direction:column;gap:8px;z-index:100;pointer-events:none}
+.toast{display:flex;align-items:center;gap:10px;padding:10px 16px;border-radius:var(--rs);font-size:13px;font-weight:500;background:var(--s3);border:1px solid var(--bd2);color:var(--t1);animation:slideIn .25s ease;pointer-events:auto;box-shadow:0 8px 30px rgba(0,0,0,.4)}
+.toast.info{border-left:3px solid var(--ac)}
+.toast.success{border-left:3px solid var(--green)}
+.toast.error{border-left:3px solid var(--red)}
+.toast.warn{border-left:3px solid var(--yellow)}
+.toast.out{animation:slideOut .25s ease forwards}
+
+/* ─── History panel ─────────────────────────────────────────────────────────── */
+.history-accordion{margin-top:6px}
+.history-item{border:1px solid var(--bd);border-radius:var(--rs);overflow:hidden;margin-bottom:8px}
+.history-head{display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--s2);cursor:pointer;user-select:none;transition:var(--trans)}
+.history-head:hover{background:var(--s3)}
+.history-head-name{font-size:13px;font-weight:500;color:var(--t1);flex:1}
+.history-chevron{color:var(--t3);font-size:12px;transition:var(--trans)}
+.history-item.open .history-chevron{transform:rotate(180deg)}
+.history-body{display:none;padding:16px;background:var(--s1);border-top:1px solid var(--bd);max-height:400px;overflow-y:auto}
+.history-item.open .history-body{display:block}
+
+/* ─── Animations ────────────────────────────────────────────────────────────── */
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
+@keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+@keyframes slideIn{from{opacity:0;transform:translateX(20px)}to{opacity:1;transform:translateX(0)}}
+@keyframes slideOut{to{opacity:0;transform:translateX(20px)}}
+
+/* ─── Utility ───────────────────────────────────────────────────────────────── */
+.hidden{display:none!important}
+.chip{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:99px;font-size:11px;font-weight:600}
+.chip.ac{background:var(--ac-lo);color:var(--ac)}
+.chip.green{background:var(--green-lo);color:var(--green)}
+.divider{height:1px;background:var(--bd);margin:8px 0}
+.spacer{flex:1}
+</style>
+</head>
+<body>
+
+<!-- ╔═══════════════════════════════════════════════════════════════════════╗ -->
+<!-- ║  SCREEN 1: Setup (API Key)                                           ║ -->
+<!-- ╚═══════════════════════════════════════════════════════════════════════╝ -->
+<div id="screen-setup" class="screen ob active">
+  <div class="ob-card">
+    <div class="ob-logo">
+      <div class="ob-logo-icon">🎨</div>
+      <div><div class="ob-logo-text">Product Designer Agent</div><div class="ob-logo-sub">End-to-end UX design orchestration</div></div>
+    </div>
+    <div class="ob-progress"><div class="ob-dot active"></div><div class="ob-dot"></div><div class="ob-dot"></div></div>
+    <div class="ob-step">Step 1 of 3</div>
+    <div class="ob-title">Connect your API key</div>
+    <div class="ob-desc">Your key is used only to call the Anthropic API during this session. It's never stored or sent anywhere else.</div>
+    <div class="field">
+      <label>Anthropic API Key</label>
+      <input type="password" id="inp-key" placeholder="sk-ant-api03-..." autocomplete="off">
+      <div class="field-hint">Get your key at <a href="https://console.anthropic.com" target="_blank">console.anthropic.com</a></div>
+    </div>
+    <div class="field">
+      <label>Project Name <span style="color:var(--t3);font-weight:400">(optional)</span></label>
+      <input type="text" id="inp-project" placeholder="My Product">
+    </div>
+    <div class="ob-actions">
+      <button class="btn btn-primary" onclick="goToBrief()">Continue →</button>
+    </div>
+  </div>
+</div>
+
+<!-- ╔═══════════════════════════════════════════════════════════════════════╗ -->
+<!-- ║  SCREEN 2: Brief                                                     ║ -->
+<!-- ╚═══════════════════════════════════════════════════════════════════════╝ -->
+<div id="screen-brief" class="screen ob">
+  <div class="ob-card" style="width:580px">
+    <div class="ob-logo">
+      <div class="ob-logo-icon">🎨</div>
+      <div><div class="ob-logo-text">Product Designer Agent</div></div>
+    </div>
+    <div class="ob-progress"><div class="ob-dot done"></div><div class="ob-dot active"></div><div class="ob-dot"></div></div>
+    <div class="ob-step">Step 2 of 3</div>
+    <div class="ob-title">Describe your project</div>
+    <div class="ob-desc">Share your problem statement, design brief, or product idea. The more detail you provide, the better the agent can tailor every deliverable.</div>
+    <div class="field">
+      <label>Problem Statement / Design Brief</label>
+      <textarea id="inp-brief" placeholder="e.g. We're building a mobile app for independent freelancers to track invoices and get paid faster. The core problem is that freelancers lose track of unpaid invoices and spend too much time chasing clients. We need a solution that…" rows="8"></textarea>
+    </div>
+    <div class="ob-actions">
+      <button class="btn btn-ghost" onclick="showScreen('screen-setup')">← Back</button>
+      <button class="btn btn-primary" onclick="goToData()">Continue →</button>
+    </div>
+  </div>
+</div>
+
+<!-- ╔═══════════════════════════════════════════════════════════════════════╗ -->
+<!-- ║  SCREEN 3: Data choices                                              ║ -->
+<!-- ╚═══════════════════════════════════════════════════════════════════════╝ -->
+<div id="screen-data" class="screen ob">
+  <div class="ob-card" style="width:560px">
+    <div class="ob-logo">
+      <div class="ob-logo-icon">🎨</div>
+      <div><div class="ob-logo-text">Product Designer Agent</div></div>
+    </div>
+    <div class="ob-progress"><div class="ob-dot done"></div><div class="ob-dot done"></div><div class="ob-dot active"></div></div>
+    <div class="ob-step">Step 3 of 3</div>
+    <div class="ob-title">Research data</div>
+    <div class="ob-desc">Tell the agent what data you already have. This determines which steps are skipped or simulated.</div>
+
+    <div class="field">
+      <label>User Interview Data</label>
+      <div class="radio-group" id="rg-interviews">
+        <label class="radio-card selected" data-val="have">
+          <input type="radio" name="interviews" value="have" checked>
+          <div class="radio-dot"></div>
+          <div><div class="radio-label">I have transcripts / notes</div><div class="radio-sub">Paste your data and the agent will synthesise it directly</div></div>
+        </label>
+        <label class="radio-card" data-val="simulate">
+          <input type="radio" name="interviews" value="simulate">
+          <div class="radio-dot"></div>
+          <div><div class="radio-label">Simulate interviews with AI</div><div class="radio-sub">The agent creates a realistic persona and runs a virtual session</div></div>
+        </label>
+        <label class="radio-card" data-val="skip">
+          <input type="radio" name="interviews" value="skip">
+          <div class="radio-dot"></div>
+          <div><div class="radio-label">Skip interviews</div><div class="radio-sub">Synthesis will proceed with limited qualitative data</div></div>
+        </label>
+      </div>
+      <div class="data-paste" id="paste-interviews">
+        <textarea id="inp-interview-data" placeholder="Paste interview transcripts or notes here…" rows="5"></textarea>
+      </div>
+    </div>
+
+    <div class="field">
+      <label>Usability Testing Data</label>
+      <div class="radio-group" id="rg-usability">
+        <label class="radio-card selected" data-val="have">
+          <input type="radio" name="usability" value="have" checked>
+          <div class="radio-dot"></div>
+          <div><div class="radio-label">I have usability session notes</div><div class="radio-sub">Paste your session data for the agent to analyse</div></div>
+        </label>
+        <label class="radio-card" data-val="simulate">
+          <input type="radio" name="usability" value="simulate">
+          <div class="radio-dot"></div>
+          <div><div class="radio-label">Simulate usability testing</div><div class="radio-sub">The agent plays a realistic participant and tests the prototype</div></div>
+        </label>
+        <label class="radio-card" data-val="skip">
+          <input type="radio" name="usability" value="skip">
+          <div class="radio-dot"></div>
+          <div><div class="radio-label">Skip usability testing</div><div class="radio-sub">Produce a test guide only, without simulated sessions</div></div>
+        </label>
+      </div>
+      <div class="data-paste" id="paste-usability">
+        <textarea id="inp-usability-data" placeholder="Paste usability session notes here…" rows="5"></textarea>
+      </div>
+    </div>
+
+    <div class="ob-actions">
+      <button class="btn btn-ghost" onclick="showScreen('screen-brief')">← Back</button>
+      <button class="btn btn-primary" onclick="startAgent()">🚀 Start Design Process</button>
+    </div>
+  </div>
+</div>
+
+<!-- ╔═══════════════════════════════════════════════════════════════════════╗ -->
+<!-- ║  SCREEN 4: Main agent workspace                                      ║ -->
+<!-- ╚═══════════════════════════════════════════════════════════════════════╝ -->
+<div id="screen-main" class="screen">
+
+  <!-- Header -->
+  <header class="app-header">
+    <div class="app-logo">
+      <div class="app-logo-icon">🎨</div>
+      <div class="app-logo-text">Product Designer Agent</div>
+      <span class="app-project" id="hdr-project"></span>
+    </div>
+    <div class="app-progress">
+      <div class="progress-bar"><div class="progress-fill" id="prog-fill" style="width:0%"></div></div>
+      <div class="progress-label" id="prog-label">Ready</div>
+    </div>
+    <div class="app-status">
+      <div class="status-dot" id="status-dot"></div>
+      <span id="status-text">Idle</span>
+    </div>
+  </header>
+
+  <div class="app-body">
+
+    <!-- Sidebar -->
+    <aside id="sidebar">
+      <div class="sidebar-section">Workflow</div>
+      <div class="sidebar-skills" id="sidebar-skills">
+        <div style="padding:20px;text-align:center;color:var(--t3);font-size:12px">
+          Workflow plan will appear after the Research Plan step.
+        </div>
+      </div>
+      <div class="sidebar-log-btn" onclick="toggleLogDrawer()">
+        📔 Session Logbook
+        <span class="log-count" id="log-count">0</span>
+      </div>
+    </aside>
+
+    <!-- Main content -->
+    <main id="main-content">
+
+      <!-- STATE: idle -->
+      <div id="state-idle" class="state active">
+        <div class="idle-icon">🎨</div>
+        <div class="idle-title">Ready to design</div>
+        <div class="idle-sub">The agent will start with the UX Research Plan and guide you through the full design process step by step.</div>
+      </div>
+
+      <!-- STATE: executing (streaming) -->
+      <div id="state-executing" class="state">
+        <div class="exec-header">
+          <span id="exec-label" class="exec-label">Executing…</span>
+          <div class="exec-status"><div class="status-dot running"></div><span id="exec-status-text">Generating…</span></div>
+        </div>
+        <div class="stream-box" id="stream-box"></div>
+      </div>
+
+      <!-- STATE: review -->
+      <div id="state-review" class="state">
+
+        <!-- Output card -->
+        <div class="output-card">
+          <div class="output-card-header">
+            <span class="output-card-title" id="review-title">Output</span>
+            <div id="review-qa-badge" class="qa-badge"></div>
+          </div>
+          <div class="output-card-body">
+            <div class="md" id="review-output"></div>
+          </div>
+          <div class="output-card-footer">
+            <button class="btn btn-ghost" style="font-size:12px" onclick="downloadCurrent()">⬇ Download .md</button>
+            <button class="btn btn-ghost" style="font-size:12px" onclick="copyCurrent()">📋 Copy</button>
+          </div>
+        </div>
+
+        <!-- QA panel -->
+        <div class="qa-panel" id="qa-panel">
+          <div class="qa-header">
+            <span class="qa-title">QA Assessment</span>
+            <div id="qa-badge-detail" class="qa-badge"></div>
+            <div style="flex:1"></div>
+            <span id="qa-alignment" class="chip" style="font-size:11px"></span>
+          </div>
+          <div class="qa-body">
+            <div>
+              <div class="qa-col-title issues">Issues Found</div>
+              <ul class="qa-list" id="qa-issues"></ul>
+            </div>
+            <div>
+              <div class="qa-col-title recs">Recommendations</div>
+              <ul class="qa-list" id="qa-recs"></ul>
+            </div>
+          </div>
+          <div class="qa-meta" id="qa-meta"></div>
+        </div>
+
+        <!-- Approval -->
+        <div class="approval-section">
+          <div>
+            <div class="approval-title">👤 Human Approval Required</div>
+            <div class="approval-sub">Review the output and QA assessment above. You can approve it to continue, or request a revision with your feedback.</div>
+          </div>
+          <div class="field" style="margin:0">
+            <label>Suggestions or improvements <span style="color:var(--t3);font-weight:400">(optional)</span></label>
+            <textarea id="inp-suggestions" placeholder="Any notes for improvement, changes you'd like to see, or things to add…" rows="3"></textarea>
+          </div>
+          <div class="feedback-area" id="feedback-area">
+            <div class="field" style="margin:0">
+              <label>Revision feedback <span style="color:var(--red)">*</span></label>
+              <textarea id="inp-feedback" placeholder="Describe what needs to change in this revision…" rows="3"></textarea>
+            </div>
+          </div>
+          <div class="approval-actions">
+            <button class="btn btn-success" id="btn-approve" onclick="handleApprove()">✅ Approve &amp; Continue</button>
+            <button class="btn btn-warn" id="btn-revise" onclick="handleRevise()">🔄 Request Revision</button>
+            <span class="approval-hint" id="approval-hint">Step <span id="step-num">—</span> of <span id="step-total">—</span></span>
+          </div>
+        </div>
+
+        <!-- History of previous outputs -->
+        <div class="history-accordion" id="history-accordion"></div>
+        <div style="height:20px"></div>
+
+      </div><!-- /state-review -->
+
+      <!-- STATE: logbook -->
+      <div id="state-logbook" class="state">
+        <div class="logbook-card">
+          <div class="logbook-header">
+            <span style="font-size:18px">📔</span>
+            <span class="output-card-title">Agent Logbook &amp; Learnings</span>
+            <button class="btn btn-ghost" style="font-size:12px;margin-left:auto" onclick="downloadLogbook()">⬇ Download</button>
+          </div>
+          <div class="logbook-body">
+            <div class="md" id="logbook-output"></div>
+          </div>
+        </div>
+        <div class="approval-section">
+          <div>
+            <div class="approval-title">Approve learnings &amp; update agent rules?</div>
+            <div class="approval-sub">If you approve, the logbook will be saved as a learning record that informs future sessions.</div>
+          </div>
+          <div class="approval-actions">
+            <button class="btn btn-success" onclick="approveLogbook()">✅ Approve &amp; Save Learnings</button>
+            <button class="btn btn-ghost" onclick="skipLogbook()">Skip</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- STATE: done -->
+      <div id="state-done" class="state">
+        <div class="done-icon">🎉</div>
+        <div class="done-title">Design process complete!</div>
+        <div class="done-sub">All deliverables have been generated, QA-checked, and approved. Find your outputs below.</div>
+        <div class="done-stats" id="done-stats"></div>
+        <div style="display:flex;gap:10px;margin-top:16px">
+          <button class="btn btn-primary" onclick="downloadAll()">⬇ Download All Outputs</button>
+          <button class="btn btn-ghost" onclick="location.reload()">Start New Project</button>
+        </div>
+      </div>
+
+    </main>
+  </div>
+</div>
+
+<!-- ╔═══════════════════════════════════════════════════════════════════════╗ -->
+<!-- ║  Log Drawer                                                          ║ -->
+<!-- ╚═══════════════════════════════════════════════════════════════════════╝ -->
+<div id="log-drawer">
+  <div class="log-drawer-header">
+    <span class="log-drawer-title">📔 Session Logbook</span>
+    <button class="btn btn-icon btn-ghost" onclick="toggleLogDrawer()">✕</button>
+  </div>
+  <div class="log-entries" id="log-entries"></div>
+</div>
+
+<!-- Toast container -->
+<div id="toasts"></div>
+
+
+<!-- ╔═══════════════════════════════════════════════════════════════════════╗ -->
+<!-- ║  JavaScript                                                          ║ -->
+<!-- ╚═══════════════════════════════════════════════════════════════════════╝ -->
+<script>
+mermaid.initialize({ startOnLoad: false, theme: 'dark', themeVariables: { background: '#1E1E2D', primaryColor: '#7B5FF5', edgeLabelBackground: '#1E1E2D' } });
+
+// ── Constants ────────────────────────────────────────────────────────────────
+const SKILL_SEQ = [
+  'research_plan','ux_literature_review','competitor_analysis',
+  'ux_interview_guide','simulated_interviewee','uxr_synthesis',
+  'ux_ideation','prd_generator','ux_user_flow','ux_information_architecture',
+  'ux_brand_guidelines','ux_design_system','ux_prototype_generator',
+  'ux_usability_test_guide','simulated_usability_participant'
+];
+const SKILL_NAMES = {
+  research_plan:'UX Research Plan', ux_literature_review:'Literature Review',
+  competitor_analysis:'Competitor Analysis', ux_interview_guide:'Interview Guide',
+  simulated_interviewee:'Simulated Interviews', uxr_synthesis:'UXR Synthesis',
+  ux_ideation:'Design Ideation', prd_generator:'Product Requirements (PRD)',
+  ux_user_flow:'User Flow', ux_information_architecture:'Information Architecture',
+  ux_brand_guidelines:'Brand Guidelines', ux_design_system:'Design System',
+  ux_prototype_generator:'Interactive Prototype', ux_usability_test_guide:'Usability Test Guide',
+  simulated_usability_participant:'Simulated Usability Testing'
+};
+
+// ── State ────────────────────────────────────────────────────────────────────
+const S = {
+  apiKey:'', model:'claude-sonnet-4-5-20250929', projectName:'', brief:'',
+  interviewData:null, usabilityData:null,
+  useSimulatedInterviews:false, useSimulatedUsability:false,
+  todoList:[], currentSkillIdx:-1,
+  context:{}, skillMeta:{},  // skill -> {status,qa,iterations,output}
+  logbook:[], logbookSummary:'',
+  approvalResolve:null, totalCompleted:0
+};
+
+// ── Screen router ─────────────────────────────────────────────────────────────
+function showScreen(id){ document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active')); document.getElementById(id).classList.add('active'); }
+function showState(id){ document.querySelectorAll('.state').forEach(s=>s.classList.remove('active')); document.getElementById(id).classList.add('active'); }
+
+// ── Radio card interactions ───────────────────────────────────────────────────
+document.querySelectorAll('.radio-group').forEach(grp=>{
+  grp.querySelectorAll('.radio-card').forEach(card=>{
+    card.addEventListener('click',()=>{
+      grp.querySelectorAll('.radio-card').forEach(c=>c.classList.remove('selected'));
+      card.classList.add('selected');
+      card.querySelector('input').checked=true;
+      // Show paste area if "have"
+      const val=card.dataset.val;
+      const grpId=grp.id;
+      if(grpId==='rg-interviews') document.getElementById('paste-interviews').classList.toggle('visible',val==='have');
+      if(grpId==='rg-usability')  document.getElementById('paste-usability').classList.toggle('visible',val==='have');
+    });
+  });
+  // Default: first card selected
+  grp.querySelector('.radio-card').classList.add('selected');
+});
+// Show paste areas for default "have" selection
+document.getElementById('paste-interviews').classList.add('visible');
+document.getElementById('paste-usability').classList.add('visible');
+
+// ── Onboarding flow ───────────────────────────────────────────────────────────
+function goToBrief(){
+  const key=document.getElementById('inp-key').value.trim();
+  if(!key){toast('Please enter your Anthropic API key.','error');return;}
+  S.apiKey=key;
+  S.projectName=document.getElementById('inp-project').value.trim()||'Untitled Project';
+  showScreen('screen-brief');
+}
+function goToData(){
+  const brief=document.getElementById('inp-brief').value.trim();
+  if(!brief){toast('Please enter a project brief.','error');return;}
+  S.brief=brief;
+  showScreen('screen-data');
+}
+
+// ── Start agent ───────────────────────────────────────────────────────────────
+async function startAgent(){
+  // Collect data choices
+  const intVal=document.querySelector('input[name=interviews]:checked').value;
+  const usbVal=document.querySelector('input[name=usability]:checked').value;
+  if(intVal==='have') S.interviewData=document.getElementById('inp-interview-data').value.trim()||null;
+  S.useSimulatedInterviews=intVal==='simulate';
+  if(usbVal==='have') S.usabilityData=document.getElementById('inp-usability-data').value.trim()||null;
+  S.useSimulatedUsability=usbVal==='simulate';
+
+  showScreen('screen-main');
+  document.getElementById('hdr-project').textContent=S.projectName;
+  setStatus('running','Initialising…');
+  showState('state-idle');
+  addLog('SESSION_START','Agent session started',{project:S.projectName});
+  toast('Agent started — running UX Research Plan first.','info');
+
+  // Small delay for UI to settle
+  await sleep(600);
+  await runWorkflow();
+}
+
+// ── Main workflow ─────────────────────────────────────────────────────────────
+async function runWorkflow(){
+  try{
+    // 1. Execute Research Plan
+    await executeSkillAndApprove('research_plan');
+
+    // 2. Parse todo list
+    setStatus('running','Parsing workflow plan…');
+    const planText=S.context['research_plan']||'';
+    const res=await api('parse-todo',{research_plan:planText});
+    S.todoList=res.todo||SKILL_SEQ;
+    renderSidebar(S.todoList);
+    updateProgress(0,S.todoList.length);
+    toast('Research plan approved — workflow plan ready.','success');
+    addLog('PLAN_PARSED','Workflow plan extracted',{skills:S.todoList});
+
+    // 3. Execute remaining skills
+    for(let i=0;i<S.todoList.length;i++){
+      const skill=S.todoList[i];
+      if(skill==='research_plan') continue;
+      if(shouldSkip(skill)){
+        setSkillStatus(skill,'skipped');
+        addLog('SKILL_SKIP',`Skipped: ${skill}`,{reason:'User data provided or simulation declined'});
+        continue;
+      }
+      await executeSkillAndApprove(skill);
+      updateProgress(S.totalCompleted,S.todoList.length);
+    }
+
+    // 4. Generate logbook
+    await generateLogbook();
+
+  }catch(e){
+    console.error(e);
+    toast('An error occurred: '+e.message,'error');
+    setStatus('idle','Error');
+  }
+}
+
+function shouldSkip(skill){
+  if(skill==='ux_interview_guide' && S.interviewData) return true;
+  if(skill==='simulated_interviewee' && !S.useSimulatedInterviews) return true;
+  if(skill==='simulated_usability_participant' && !S.useSimulatedUsability) return true;
+  return false;
+}
+
+// ── Execute skill + QA + approval loop ────────────────────────────────────────
+async function executeSkillAndApprove(skillName){
+  const display=SKILL_NAMES[skillName]||skillName;
+  setSkillStatus(skillName,'running');
+  S.currentSkillIdx=S.todoList.indexOf(skillName);
+  setStatus('running','Running: '+display);
+  addLog('SKILL_START','Started: '+skillName,{skill:skillName});
+
+  let iterations=0;
+  let feedback=null;
+
+  while(true){
+    iterations++;
+    // Execute
+    const output=await streamSkill(skillName,feedback);
+    S.context[skillName]=output;
+    S.skillMeta[skillName]={status:'completed',output,iterations,qa:null};
+
+    // QA
+    setStatus('running','Running QA on '+display+'…');
+    showExecutingStatus('Running QA check…');
+    const qa=await runQA(skillName,output);
+    S.skillMeta[skillName].qa=qa;
+    addLog('QA_RESULT','QA for '+skillName+': '+qa.score,{skill:skillName,score:qa.score,issues:qa.issues});
+
+    // Self-reflection
+    try{
+      const lr=await api('reflect',{skill_name:skillName,qa_score:qa.score,iterations,user_feedback:feedback});
+      addLog('LEARNING',lr.learning||'',{skill:skillName,category:skillName.toUpperCase()});
+    }catch(_){}
+
+    // Show review UI
+    showReviewState(skillName,output,qa,iterations);
+
+    // Wait for approval
+    const {approved,userFeedback}=await waitForApproval();
+    if(userFeedback) addLog('USER_SUGGESTION','User suggestion for '+skillName,{feedback:userFeedback});
+
+    if(approved){
+      S.totalCompleted++;
+      setSkillStatus(skillName,'completed',qa.score);
+      addLog('SKILL_COMPLETE','Completed: '+skillName,{skill:skillName,qa_score:qa.score,iterations,approved:true});
+      addHistoryItem(skillName,output,qa);
+      toast(display+' approved ✅','success');
+      break;
+    }else{
+      // Revision requested
+      feedback=userFeedback;
+      addLog('ITERATION','Revision requested for '+skillName,{reason:feedback});
+      setSkillStatus(skillName,'running');
+      toast('Revising '+display+'…','warn');
+    }
+  }
+}
+
+// ── Streaming skill call ───────────────────────────────────────────────────────
+async function streamSkill(skillName,feedback=null){
+  const display=SKILL_NAMES[skillName]||skillName;
+  showState('state-executing');
+  document.getElementById('exec-label').textContent=display;
+  document.getElementById('exec-status-text').textContent='Generating…';
+  const box=document.getElementById('stream-box');
+  box.innerHTML='';
+
+  const cursor=document.createElement('span');
+  cursor.className='cursor';
+  box.appendChild(cursor);
+
+  let accumulated='';
+
+  const body=JSON.stringify({
+    api_key:S.apiKey, skill_name:skillName, brief:S.brief,
+    context:buildContextForAPI(skillName),
+    interview_data:S.interviewData, usability_data:S.usabilityData,
+    feedback:feedback, model:S.model
+  });
+
+  const resp=await fetch('/api/skill/stream',{method:'POST',headers:{'Content-Type':'application/json'},body});
+  if(!resp.ok) throw new Error('Skill API error: '+resp.status);
+
+  const reader=resp.body.getReader();
+  const decoder=new TextDecoder();
+  let buf='';
+
+  while(true){
+    const {done,value}=await reader.read();
+    if(done) break;
+    buf+=decoder.decode(value,{stream:true});
+    const lines=buf.split('\n');
+    buf=lines.pop();
+    for(const line of lines){
+      if(!line.startsWith('data: ')) continue;
+      const raw=line.slice(6).trim();
+      if(!raw) continue;
+      try{
+        const msg=JSON.parse(raw);
+        if(msg.type==='text'){
+          accumulated+=msg.text;
+          // Insert text before cursor
+          cursor.insertAdjacentText('beforebegin',msg.text);
+          box.scrollTop=box.scrollHeight;
+        }else if(msg.type==='done'){
+          cursor.remove();
+          document.getElementById('exec-status-text').textContent='Complete';
+        }else if(msg.type==='error'){
+          throw new Error(msg.message);
+        }
+      }catch(_){}
+    }
+  }
+  return accumulated;
+}
+
+// ── QA call ───────────────────────────────────────────────────────────────────
+async function runQA(skillName,output){
+  return await api('qa',{skill_name:skillName,output,brief:S.brief,context:buildContextForAPI(skillName)});
+}
+
+// ── Show review state ─────────────────────────────────────────────────────────
+function showReviewState(skillName,output,qa,iterations){
+  showState('state-review');
+  const display=SKILL_NAMES[skillName]||skillName;
+  document.getElementById('review-title').textContent=display;
+  document.getElementById('step-num').textContent=S.todoList.indexOf(skillName)+1;
+  document.getElementById('step-total').textContent=S.todoList.length;
+
+  // Render markdown output
+  const outEl=document.getElementById('review-output');
+  outEl.innerHTML=renderMd(output);
+  postRenderMermaid(outEl);
+
+  // QA badge in header
+  const badge=document.getElementById('review-qa-badge');
+  badge.className='qa-badge '+qa.score;
+  badge.textContent=qa.score==='NEEDS_IMPROVEMENT'?'⚠ Needs Improvement':qa.score==='PASS'?'✅ Pass':'❌ Fail';
+
+  // QA panel
+  document.getElementById('qa-badge-detail').className='qa-badge '+qa.score;
+  document.getElementById('qa-badge-detail').textContent=badge.textContent;
+  document.getElementById('qa-alignment').textContent=qa.brief_alignment||'';
+  document.getElementById('qa-alignment').className='chip '+(qa.brief_alignment==='ALIGNED'?'green':qa.brief_alignment==='MISALIGNED'?'':'ac');
+  document.getElementById('qa-meta').textContent=qa.summary||'';
+
+  const issuesList=document.getElementById('qa-issues');
+  issuesList.innerHTML=(qa.issues||[]).map(i=>`<li>${escHtml(i)}</li>`).join('')||'<li style="color:var(--t3)">No issues found</li>';
+  const recsList=document.getElementById('qa-recs');
+  recsList.innerHTML=(qa.recommendations||[]).map(r=>`<li>${escHtml(r)}</li>`).join('')||'<li style="color:var(--t3)">No recommendations</li>';
+
+  // Reset feedback area
+  document.getElementById('inp-suggestions').value='';
+  document.getElementById('inp-feedback').value='';
+  document.getElementById('feedback-area').classList.remove('visible');
+}
+
+function showExecutingStatus(msg){
+  document.getElementById('exec-status-text').textContent=msg;
+}
+
+// ── Approval flow ─────────────────────────────────────────────────────────────
+function waitForApproval(){
+  return new Promise(resolve=>{ S.approvalResolve=resolve; });
+}
+function handleApprove(){
+  const suggestions=document.getElementById('inp-suggestions').value.trim();
+  if(S.approvalResolve) S.approvalResolve({approved:true,userFeedback:suggestions});
+}
+function handleRevise(){
+  document.getElementById('feedback-area').classList.add('visible');
+  const feedback=document.getElementById('inp-feedback').value.trim();
+  if(!feedback){ document.getElementById('inp-feedback').focus(); toast('Please describe what needs to change.','warn'); return; }
+  if(S.approvalResolve) S.approvalResolve({approved:false,userFeedback:feedback});
+}
+
+// ── Logbook ───────────────────────────────────────────────────────────────────
+async function generateLogbook(){
+  setStatus('running','Generating session logbook…');
+  showState('state-executing');
+  document.getElementById('exec-label').textContent='Session Logbook';
+  document.getElementById('exec-status-text').textContent='Reflecting…';
+  document.getElementById('stream-box').textContent='Generating agent logbook and learnings…';
+
+  const result=await api('logbook',{entries:S.logbook});
+  S.logbookSummary=result.summary||'No summary generated.';
+
+  document.getElementById('logbook-output').innerHTML=renderMd(S.logbookSummary);
+  postRenderMermaid(document.getElementById('logbook-output'));
+  showState('state-logbook');
+  setStatus('done','Logbook ready');
+  toast('Design process complete! Review your logbook.','success');
+}
+function approveLogbook(){
+  addLog('LOGBOOK_APPROVED','User approved logbook and learnings',{});
+  toast('Learnings saved ✅','success');
+  showDone();
+}
+function skipLogbook(){ showDone(); }
+function downloadLogbook(){
+  downloadText(S.logbookSummary,'agent-logbook.md','text/markdown');
+}
+
+// ── Done state ─────────────────────────────────────────────────────────────────
+function showDone(){
+  const completed=Object.values(S.skillMeta).filter(m=>m.status==='completed').length;
+  const passes=Object.values(S.skillMeta).filter(m=>m.qa&&m.qa.score==='PASS').length;
+  const statsEl=document.getElementById('done-stats');
+  statsEl.innerHTML=[
+    {n:completed,l:'Skills Complete'},
+    {n:passes,l:'QA Passes'},
+    {n:S.logbook.filter(e=>e.event_type==='LEARNING').length,l:'Learnings'}
+  ].map(s=>`<div class="done-stat"><div class="done-stat-n">${s.n}</div><div class="done-stat-l">${s.l}</div></div>`).join('');
+  showState('state-done');
+  setStatus('done','Complete');
+}
+
+function downloadAll(){
+  // Download each output as individual MD files via sequential downloads
+  const outputs=Object.entries(S.context);
+  if(!outputs.length){toast('No outputs to download.','warn');return;}
+  outputs.forEach(([k,v],i)=>setTimeout(()=>downloadText(v,`${k}.md`,'text/markdown'),i*200));
+  toast(`Downloading ${outputs.length} files…`,'info');
+}
+
+// ── Sidebar rendering ─────────────────────────────────────────────────────────
+function renderSidebar(todoList){
+  const el=document.getElementById('sidebar-skills');
+  el.innerHTML=todoList.map(skill=>{
+    const name=SKILL_NAMES[skill]||skill;
+    return `<div class="skill-row pending" id="srow-${skill}" onclick="viewSkillOutput('${skill}')">
+      <div class="skill-dot pending" id="sdot-${skill}"></div>
+      <span class="skill-name">${name}</span>
+      <span class="skill-qa hidden" id="sqa-${skill}"></span>
+    </div>`;
+  }).join('');
+}
+
+function setSkillStatus(skill,status,qaScore=null){
+  const row=document.getElementById('srow-'+skill);
+  const dot=document.getElementById('sdot-'+skill);
+  const qa=document.getElementById('sqa-'+skill);
+  if(!row) return;
+  row.className='skill-row '+status;
+  dot.className='skill-dot '+status;
+  if(qaScore&&qa){qa.className='skill-qa '+qaScore;qa.textContent=qaScore==='PASS'?'✓':qaScore==='NEEDS_IMPROVEMENT'?'~':'✗';qa.classList.remove('hidden');}
+  if(S.skillMeta[skill]) S.skillMeta[skill].status=status;
+}
+
+function viewSkillOutput(skill){
+  const meta=S.skillMeta[skill];
+  if(!meta||!meta.output) return;
+  showReviewState(skill,meta.output,meta.qa||{score:'PASS',issues:[],recommendations:[]},meta.iterations||1);
+  // Disable approval buttons when viewing history
+  document.getElementById('btn-approve').disabled=true;
+  document.getElementById('btn-revise').disabled=true;
+  setTimeout(()=>{ document.getElementById('btn-approve').disabled=false; document.getElementById('btn-revise').disabled=false; },100);
+}
+
+// ── History accordion ──────────────────────────────────────────────────────────
+function addHistoryItem(skill,output,qa){
+  const name=SKILL_NAMES[skill]||skill;
+  const acc=document.getElementById('history-accordion');
+  const score=qa?qa.score:'?';
+  const div=document.createElement('div');
+  div.className='history-item';
+  div.innerHTML=`
+    <div class="history-head" onclick="this.parentElement.classList.toggle('open')">
+      <span class="skill-dot completed" style="flex-shrink:0"></span>
+      <span class="history-head-name">${name}</span>
+      <span class="qa-badge ${score}" style="font-size:10px;padding:2px 8px">${score}</span>
+      <span class="history-chevron">▾</span>
+    </div>
+    <div class="history-body md">${renderMd(output)}</div>`;
+  acc.prepend(div);
+  postRenderMermaid(div);
+}
+
+// ── Progress ──────────────────────────────────────────────────────────────────
+function updateProgress(done,total){
+  const pct=total>0?Math.round((done/total)*100):0;
+  document.getElementById('prog-fill').style.width=pct+'%';
+  document.getElementById('prog-label').textContent=`${done} / ${total} steps`;
+}
+function setStatus(type,text){
+  document.getElementById('status-text').textContent=text;
+  const dot=document.getElementById('status-dot');
+  dot.className='status-dot '+type;
+}
+
+// ── Log drawer ────────────────────────────────────────────────────────────────
+function addLog(type,desc,data={}){
+  const entry={id:S.logbook.length+1,timestamp:new Date().toISOString(),event_type:type,description:desc,data};
+  S.logbook.push(entry);
+  const countEl=document.getElementById('log-count');
+  countEl.textContent=S.logbook.length;
+  const entries=document.getElementById('log-entries');
+  const time=new Date().toLocaleTimeString();
+  const div=document.createElement('div');
+  div.className=`log-entry ${type}`;
+  div.innerHTML=`<div class="log-entry-type">${type.replace(/_/g,' ')}</div><div class="log-entry-desc">${escHtml(desc)}</div><div class="log-entry-time">${time}</div>`;
+  entries.prepend(div);
+}
+let logOpen=false;
+function toggleLogDrawer(){
+  logOpen=!logOpen;
+  document.getElementById('log-drawer').classList.toggle('open',logOpen);
+}
+
+// ── Toast ─────────────────────────────────────────────────────────────────────
+function toast(msg,type='info'){
+  const icons={info:'ℹ️',success:'✅',error:'❌',warn:'⚠️'};
+  const el=document.createElement('div');
+  el.className=`toast ${type}`;
+  el.textContent=icons[type]+' '+msg;
+  document.getElementById('toasts').prepend(el);
+  setTimeout(()=>{ el.classList.add('out'); setTimeout(()=>el.remove(),300); },3500);
+}
+
+// ── API helper ────────────────────────────────────────────────────────────────
+async function api(endpoint,body){
+  const res=await fetch(`/api/${endpoint}`,{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({...body,api_key:S.apiKey,model:S.model})
+  });
+  if(!res.ok){ const t=await res.text(); throw new Error(`API error ${res.status}: ${t}`); }
+  return res.json();
+}
+
+// ── Markdown rendering ────────────────────────────────────────────────────────
+function renderMd(text){
+  if(!text) return '';
+  marked.setOptions({breaks:true,gfm:true});
+  let html=marked.parse(text);
+  // Promote mermaid code blocks
+  html=html.replace(/<pre><code class="language-mermaid">([\s\S]*?)<\/code><\/pre>/g,
+    (_,code)=>`<div class="mermaid">${unescHtml(code)}</div>`);
+  return html;
+}
+async function postRenderMermaid(container){
+  const nodes=container.querySelectorAll('.mermaid');
+  if(nodes.length) try{ await mermaid.run({nodes}); }catch(e){ console.warn('Mermaid error:',e); }
+}
+function unescHtml(s){ const t=document.createElement('textarea'); t.innerHTML=s; return t.value; }
+function escHtml(s){ const t=document.createElement('textarea'); t.textContent=s; return t.innerHTML; }
+
+// ── Context builder ───────────────────────────────────────────────────────────
+function buildContextForAPI(currentSkill){
+  const ctx={};
+  for(const s of SKILL_SEQ){
+    if(s===currentSkill) break;
+    if(S.context[s]) ctx[s]=S.context[s];
+  }
+  return ctx;
+}
+
+// ── Download helpers ──────────────────────────────────────────────────────────
+function downloadCurrent(){
+  const skill=S.todoList[S.currentSkillIdx]||'output';
+  downloadText(S.context[skill]||'',skill+'.md','text/markdown');
+}
+function copyCurrent(){
+  const skill=S.todoList[S.currentSkillIdx]||'output';
+  navigator.clipboard.writeText(S.context[skill]||'').then(()=>toast('Copied to clipboard!','success'));
+}
+function downloadText(text,filename,mime='text/plain'){
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([text],{type:mime}));
+  a.download=filename;
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+// ── Utility ───────────────────────────────────────────────────────────────────
+function sleep(ms){ return new Promise(r=>setTimeout(r,ms)); }
+
+// ── Enter key for first screen ────────────────────────────────────────────────
+document.getElementById('inp-key').addEventListener('keydown',e=>{ if(e.key==='Enter') goToBrief(); });
+document.getElementById('inp-project').addEventListener('keydown',e=>{ if(e.key==='Enter') goToBrief(); });
+</script>
+</body>
+</html>
