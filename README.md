@@ -13,7 +13,7 @@ The agent takes a product brief and autonomously runs every stage of the UX desi
 ```
 Problem Brief
      ↓
- Research Plan  (generates the ordered to-do list)
+ Project Plan  (generates the ordered to-do list)
      ↓
  Literature Review  →  Competitor Analysis
      ↓
@@ -139,8 +139,10 @@ product-designer-agent/
 │   └── simulated_usability_participant.md
 │
 ├── web/                  ← Browser-based interface
-│   ├── index.html        ← Complete single-file frontend
-│   ├── server.py         ← FastAPI backend
+│   ├── index.html        ← HTML shell (links style.css + app.js)
+│   ├── style.css         ← All styles (design tokens, layout, animations)
+│   ├── app.js            ← All JavaScript (state machine, streaming, UI)
+│   ├── server.py         ← FastAPI backend (serves static files + API)
 │   ├── requirements-web.txt
 │   ├── start.sh          ← Mac/Linux launcher
 │   └── start.bat         ← Windows launcher
@@ -164,7 +166,7 @@ product-designer-agent/
 
 | Skill | File | What it produces |
 |---|---|---|
-| UX Research Plan | `skills/research_plan.md` | Structured research plan + ordered to-do list |
+| Project Plan | `skills/research_plan.md` | Structured research plan + ordered to-do list |
 | Literature Review | `skills/ux_literature_review.md` | Cited evidence review with design implications |
 | Competitor Analysis | `skills/competitor_analysis.md` | Competitive landscape, UX benchmarks, opportunities |
 | Interview Guide | `skills/ux_interview_guide.md` | Moderator-ready discussion guide with probes |

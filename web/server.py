@@ -270,9 +270,13 @@ def reflect(req: ReflectionRequest):
     return {"learning": resp.content[0].text.strip()}
 
 
+# ── Static files (style.css, app.js) ──────────────────────────────────────────
+# Mount AFTER all API routes so /api/* routes take priority.
+app.mount("/static", StaticFiles(directory=BASE_DIR), name="static")
+
 # ── Run ───────────────────────────────────────────────────────────────────────
 if __name__ == "__main__":
     import uvicorn
-    print("\n🎨  Product Designer Agent — Web Interface")
+    print("\n🎨  Swetha's Product Design Agent — Web Interface")
     print("   Server: http://localhost:8000\n")
     uvicorn.run(app, host="0.0.0.0", port=8000)
