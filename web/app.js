@@ -546,7 +546,12 @@ async function downloadAll(){
   const folder=zip.folder(S.projectName||'design-outputs');
   outputs.forEach(([k,v])=>{
     if(k==='ux_prototype_generator'&&S.prototypeHtml){
-      folder.file('interactive-prototype.html',S.prototypeHtml);
+      // Split the self-contained HTML into separate HTML / CSS / JS files
+      const {html,css,js}=splitPrototype(S.prototypeHtml);
+      const proto=folder.folder('interactive-prototype');
+      proto.file('index.html',html);
+      proto.file('prototype-styles.css',css);
+      proto.file('prototype-scripts.js',js);
     }else{
       const safeName=(SKILL_NAMES[k]||k).toLowerCase().replace(/[^a-z0-9]+/g,'-');
       folder.file(`${safeName}.md`,v);
@@ -696,20 +701,45 @@ function buildContextForAPI(currentSkill){
   return ctx;
 }
 
-// ── Prototype HTML extractor ──────────────────────────────────────────────────
+// ── Prototype HTML extractor & splitter ───────────────────────────────────────
 // Pulls the raw HTML out of the prototype skill's markdown output.
 // The skill wraps the prototype in a ```html ... ``` code block.
 function extractPrototypeHtml(markdownOutput){
-  // Match fenced ```html ... ``` block (largest match wins for multi-block outputs)
+  // Match fenced ```html ... ``` block — pick the longest one (full prototype)
   const matches=[...markdownOutput.matchAll(/```html\s*([\s\S]*?)```/gi)];
   if(matches.length){
-    // Pick the longest match — the full prototype rather than small snippets
     return matches.reduce((a,b)=>b[1].length>a[1].length?b:a)[1].trim();
   }
-  // Fallback: if the output itself is raw HTML
+  // Fallback: output itself is raw HTML
   const stripped=markdownOutput.trim();
   if(/^<!DOCTYPE|^<html/i.test(stripped)) return stripped;
   return null;
+}
+
+// Splits a self-contained prototype HTML into { html, css, js }.
+// The returned html references prototype-styles.css and prototype-scripts.js.
+function splitPrototype(htmlString){
+  // Extract all <style> blocks
+  const cssBlocks=[];
+  let htmlNoCss=htmlString.replace(/<style[^>]*>([\s\S]*?)<\/style>/gi,(_,c)=>{
+    cssBlocks.push(c.trim()); return '';
+  });
+
+  // Extract all inline <script> blocks (skip those with a src= attribute)
+  const jsBlocks=[];
+  let htmlNoJs=htmlNoCss.replace(/<script(?![^>]*\bsrc\b)[^>]*>([\s\S]*?)<\/script>/gi,(_,c)=>{
+    jsBlocks.push(c.trim()); return '';
+  });
+
+  const css=cssBlocks.join('\n\n');
+  const js=jsBlocks.join('\n\n');
+
+  // Inject external file references back into the HTML
+  let html=htmlNoJs
+    .replace(/(<\/head>)/i,`  <link rel="stylesheet" href="prototype-styles.css">\n$1`)
+    .replace(/(<\/body>)/i,`  <script src="prototype-scripts.js"><\/script>\n$1`);
+
+  return {html, css, js};
 }
 
 // ── Download helpers ──────────────────────────────────────────────────────────
