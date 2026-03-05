@@ -5,9 +5,10 @@ FastAPI backend that proxies to Anthropic API and streams skill outputs.
 Run: python server.py  →  open http://localhost:8000
 """
 
+import io
 import json
 import re
-import os
+import zipfile
 from pathlib import Path
 from typing import Optional, Dict, List
 
@@ -90,6 +91,11 @@ class ReflectionRequest(BaseModel):
     user_feedback: Optional[str] = None
     model: str = "claude-sonnet-4-5-20250929"
 
+class DownloadZipRequest(BaseModel):
+    project_name: str = "design-project"
+    outputs: Dict[str, str] = {}
+    prototype_html: Optional[str] = None
+
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
 def load_skill(name: str) -> Optional[str]:
@@ -113,6 +119,46 @@ def build_context(current: str, context: Dict[str, str]) -> str:
 
 def strip_json_fences(text: str) -> str:
     return re.sub(r"```(?:json)?", "", text).replace("```", "").strip()
+
+def split_prototype_html(html: str):
+    """Split a self-contained HTML prototype into (html, css, js).
+    The returned html references prototype-styles.css and prototype-scripts.js."""
+    css_blocks: List[str] = []
+    def pull_style(m):
+        css_blocks.append(m.group(1).strip())
+        return ""
+    no_css = re.sub(r"<style[^>]*>([\s\S]*?)</style>", pull_style, html, flags=re.IGNORECASE)
+
+    js_blocks: List[str] = []
+    def pull_script(m):
+        js_blocks.append(m.group(1).strip())
+        return ""
+    # Only strip inline scripts (skip those with a src= attribute)
+    no_js = re.sub(r"<script(?![^>]*\bsrc\b)[^>]*>([\s\S]*?)</script>", pull_script, no_css, flags=re.IGNORECASE)
+
+    css = "\n\n".join(css_blocks)
+    js  = "\n\n".join(js_blocks)
+
+    out = re.sub(r"(</head>)", r'  <link rel="stylesheet" href="prototype-styles.css">\n\1', no_js, flags=re.IGNORECASE)
+    out = re.sub(r"(</body>)", r'  <script src="prototype-scripts.js"></script>\n\1', out, flags=re.IGNORECASE)
+    return out, css, js
+
+# Directories / files to exclude when bundling the repo into the zip
+_ZIP_EXCLUDE = {".git", "__pycache__", "outputs", ".env", ".DS_Store"}
+_ZIP_EXCLUDE_EXT = {".pyc", ".pyo", ".pyd"}
+
+def _add_repo_to_zip(zf: zipfile.ZipFile, repo_root: Path, arc_prefix: str) -> None:
+    """Recursively add the repo source files to the zip, skipping excluded paths."""
+    for path in sorted(repo_root.rglob("*")):
+        if not path.is_file():
+            continue
+        parts = path.relative_to(repo_root).parts
+        if any(p in _ZIP_EXCLUDE for p in parts):
+            continue
+        if path.suffix in _ZIP_EXCLUDE_EXT:
+            continue
+        arcname = f"{arc_prefix}/{path.relative_to(repo_root)}"
+        zf.write(path, arcname)
 
 # ── Endpoints ─────────────────────────────────────────────────────────────────
 
@@ -268,6 +314,53 @@ def reflect(req: ReflectionRequest):
         }],
     )
     return {"learning": resp.content[0].text.strip()}
+
+
+@app.post("/api/download-zip")
+def download_zip(req: DownloadZipRequest):
+    """Return a GitHub-ready zip of the full repo source + session outputs.
+
+    Structure inside the zip:
+      product-designer-agent/          ← full repo source (gitignore, README, skills/, web/, …)
+      product-designer-agent/outputs/<project>/
+          <skill-name>.md              ← one file per completed skill
+          interactive-prototype/
+              index.html               ← HTML with external CSS/JS refs
+              prototype-styles.css
+              prototype-scripts.js
+    """
+    safe_project = re.sub(r"[^a-z0-9-]", "-", req.project_name.lower()).strip("-") or "design-project"
+    repo_root    = BASE_DIR.parent
+    arc_prefix   = "product-designer-agent"
+
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
+        # 1. Full repo source (excludes .git, __pycache__, outputs, .env, etc.)
+        _add_repo_to_zip(zf, repo_root, arc_prefix)
+
+        # 2. outputs/.gitkeep so the folder exists but git ignores contents
+        zf.writestr(f"{arc_prefix}/outputs/.gitkeep", "")
+
+        # 3. Skill output deliverables
+        output_base = f"{arc_prefix}/outputs/{safe_project}"
+        for skill_key, content in req.outputs.items():
+            if skill_key == "ux_prototype_generator" and req.prototype_html:
+                html, css, js = split_prototype_html(req.prototype_html)
+                proto_base = f"{output_base}/interactive-prototype"
+                zf.writestr(f"{proto_base}/index.html",            html)
+                zf.writestr(f"{proto_base}/prototype-styles.css",  css)
+                zf.writestr(f"{proto_base}/prototype-scripts.js",  js)
+            else:
+                safe_skill = skill_key.replace("_", "-")
+                zf.writestr(f"{output_base}/{safe_skill}.md", content)
+
+    buf.seek(0)
+    filename = f"{arc_prefix}.zip"
+    return StreamingResponse(
+        buf,
+        media_type="application/zip",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
 
 
 # ── Static files (style.css, app.js) ──────────────────────────────────────────

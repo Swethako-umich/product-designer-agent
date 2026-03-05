@@ -541,29 +541,34 @@ function showDone(){
 async function downloadAll(){
   const outputs=Object.entries(S.context);
   if(!outputs.length){toast('No outputs to download.','warn');return;}
-  toast('Building zip…','info');
-  const zip=new JSZip();
-  const folder=zip.folder(S.projectName||'design-outputs');
-  outputs.forEach(([k,v])=>{
-    if(k==='ux_prototype_generator'&&S.prototypeHtml){
-      // Split the self-contained HTML into separate HTML / CSS / JS files
-      const {html,css,js}=splitPrototype(S.prototypeHtml);
-      const proto=folder.folder('interactive-prototype');
-      proto.file('index.html',html);
-      proto.file('prototype-styles.css',css);
-      proto.file('prototype-scripts.js',js);
-    }else{
-      const safeName=(SKILL_NAMES[k]||k).toLowerCase().replace(/[^a-z0-9]+/g,'-');
-      folder.file(`${safeName}.md`,v);
-    }
-  });
-  const blob=await zip.generateAsync({type:'blob'});
-  const a=document.createElement('a');
-  a.href=URL.createObjectURL(blob);
-  a.download=`${(S.projectName||'design-outputs').replace(/[^a-z0-9]/gi,'-')}.zip`;
-  a.click();
-  URL.revokeObjectURL(a.href);
-  toast('Downloaded ✅','success');
+  toast('Building zip — packaging full repo + outputs…','info');
+
+  // Build outputs payload: skill key → markdown content
+  const outputsObj={};
+  outputs.forEach(([k,v])=>outputsObj[k]=v);
+
+  try{
+    const res=await fetch('/api/download-zip',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        project_name: S.projectName||'design-project',
+        outputs: outputsObj,
+        prototype_html: S.prototypeHtml||null
+      })
+    });
+    if(!res.ok) throw new Error(`Server error ${res.status}`);
+    const blob=await res.blob();
+    const a=document.createElement('a');
+    a.href=URL.createObjectURL(blob);
+    a.download='product-designer-agent.zip';
+    a.click();
+    URL.revokeObjectURL(a.href);
+    toast('Downloaded ✅  Unzip → git init → git add . → git commit → git push','success');
+  }catch(err){
+    console.error('Zip download failed:',err);
+    toast('Zip failed: '+err.message,'error');
+  }
 }
 
 function downloadPrototype(){
