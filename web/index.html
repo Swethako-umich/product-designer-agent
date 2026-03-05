@@ -8,6 +8,7 @@
 <link rel="stylesheet" href="/static/style.css">
 <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 </head>
 <body>
 
@@ -392,8 +393,9 @@
         <div class="done-title">Design process complete!</div>
         <div class="done-sub">All deliverables have been generated, QA-checked, and approved. Find your outputs below.</div>
         <div class="done-stats" id="done-stats"></div>
-        <div style="display:flex;gap:10px;margin-top:16px">
-          <button class="btn btn-primary" onclick="downloadAll()">⬇ Download All Outputs</button>
+        <div style="display:flex;gap:10px;margin-top:16px;flex-wrap:wrap;justify-content:center">
+          <button class="btn btn-primary" onclick="downloadAll()">⬇ Download All as Zip</button>
+          <button class="btn btn-ghost" id="btn-dl-prototype" onclick="downloadPrototype()" style="display:none">🖥️ Download Prototype</button>
           <button class="btn btn-ghost" onclick="location.reload()">Start New Project</button>
         </div>
       </div>

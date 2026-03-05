@@ -157,6 +157,9 @@ function restartAgent(){
   S.todoList=[]; S.context={}; S.skillMeta={};
   S.logbook=[]; S.logbookSummary=''; S.logbookContext='';
   S.totalCompleted=0; S.currentSkillIdx=-1; S.approvalResolve=null;
+  S.prototypeHtml=null;
+  const pb=document.getElementById('btn-dl-prototype');
+  if(pb) pb.style.display='none';
   const pauseBtn=document.getElementById('btn-pause');
   const restartBtn=document.getElementById('btn-restart');
   if(pauseBtn){ pauseBtn.style.display='none'; pauseBtn.textContent='⏸ Pause'; pauseBtn.className='btn btn-ghost btn-sm'; }
@@ -189,7 +192,8 @@ const S = {
   context:{}, skillMeta:{},
   logbook:[], logbookSummary:'',
   approvalResolve:null, totalCompleted:0,
-  paused:false, pauseRequested:false
+  paused:false, pauseRequested:false,
+  prototypeHtml:null
 };
 
 // ── Screen router ─────────────────────────────────────────────────────────────
@@ -348,6 +352,16 @@ async function executeSkillAndApprove(skillName){
     if(approved){
       S.totalCompleted++;
       setSkillStatus(skillName,'completed',qa.score);
+      // Extract and store prototype HTML so it can be saved as .html in the zip
+      if(skillName==='ux_prototype_generator'){
+        const html=extractPrototypeHtml(output);
+        if(html){
+          S.prototypeHtml=html;
+          // Show dedicated prototype download button on Done screen
+          const pb=document.getElementById('btn-dl-prototype');
+          if(pb) pb.style.display='';
+        }
+      }
       addLog('SKILL_COMPLETE','Completed: '+skillName,{skill:skillName,qa_score:qa.score,iterations,approved:true});
       addHistoryItem(skillName,output,qa);
       addDeliverableCard(skillName,qa.score);
@@ -524,11 +538,32 @@ function showDone(){
   setStatus('done','Complete');
 }
 
-function downloadAll(){
+async function downloadAll(){
   const outputs=Object.entries(S.context);
   if(!outputs.length){toast('No outputs to download.','warn');return;}
-  outputs.forEach(([k,v],i)=>setTimeout(()=>downloadText(v,`${k}.md`,'text/markdown'),i*200));
-  toast(`Downloading ${outputs.length} files…`,'info');
+  toast('Building zip…','info');
+  const zip=new JSZip();
+  const folder=zip.folder(S.projectName||'design-outputs');
+  outputs.forEach(([k,v])=>{
+    if(k==='ux_prototype_generator'&&S.prototypeHtml){
+      folder.file('interactive-prototype.html',S.prototypeHtml);
+    }else{
+      const safeName=(SKILL_NAMES[k]||k).toLowerCase().replace(/[^a-z0-9]+/g,'-');
+      folder.file(`${safeName}.md`,v);
+    }
+  });
+  const blob=await zip.generateAsync({type:'blob'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download=`${(S.projectName||'design-outputs').replace(/[^a-z0-9]/gi,'-')}.zip`;
+  a.click();
+  URL.revokeObjectURL(a.href);
+  toast('Downloaded ✅','success');
+}
+
+function downloadPrototype(){
+  if(!S.prototypeHtml){toast('No prototype available.','warn');return;}
+  downloadText(S.prototypeHtml,'interactive-prototype.html','text/html');
 }
 
 // ── Sidebar rendering ─────────────────────────────────────────────────────────
@@ -661,10 +696,30 @@ function buildContextForAPI(currentSkill){
   return ctx;
 }
 
+// ── Prototype HTML extractor ──────────────────────────────────────────────────
+// Pulls the raw HTML out of the prototype skill's markdown output.
+// The skill wraps the prototype in a ```html ... ``` code block.
+function extractPrototypeHtml(markdownOutput){
+  // Match fenced ```html ... ``` block (largest match wins for multi-block outputs)
+  const matches=[...markdownOutput.matchAll(/```html\s*([\s\S]*?)```/gi)];
+  if(matches.length){
+    // Pick the longest match — the full prototype rather than small snippets
+    return matches.reduce((a,b)=>b[1].length>a[1].length?b:a)[1].trim();
+  }
+  // Fallback: if the output itself is raw HTML
+  const stripped=markdownOutput.trim();
+  if(/^<!DOCTYPE|^<html/i.test(stripped)) return stripped;
+  return null;
+}
+
 // ── Download helpers ──────────────────────────────────────────────────────────
 function downloadCurrent(){
   const skill=S.todoList[S.currentSkillIdx]||'output';
-  downloadText(S.context[skill]||'',skill+'.md','text/markdown');
+  if(skill==='ux_prototype_generator'&&S.prototypeHtml){
+    downloadText(S.prototypeHtml,'interactive-prototype.html','text/html');
+  }else{
+    downloadText(S.context[skill]||'',skill+'.md','text/markdown');
+  }
 }
 function copyCurrent(){
   const skill=S.todoList[S.currentSkillIdx]||'output';
