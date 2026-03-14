@@ -189,17 +189,45 @@ async def stream_skill(req: SkillRequest):
     msg += f"Please execute the **{display}** deliverable based on all the above."
 
     async def generate():
-        client = anthropic.AsyncAnthropic(api_key=req.api_key)
+        client   = anthropic.AsyncAnthropic(api_key=req.api_key)
+        messages = [{"role": "user", "content": msg}]
+        max_continuations = 8   # safety cap — prevents infinite loops
+        full_text = ""          # accumulates the assistant's complete reply
+
         try:
-            async with client.messages.stream(
-                model=req.model,
-                max_tokens=8096,
-                system=prompt,
-                messages=[{"role": "user", "content": msg}],
-            ) as stream:
-                async for text in stream.text_stream:
-                    payload = json.dumps({"type": "text", "text": text})
-                    yield f"data: {payload}\n\n"
+            for _ in range(max_continuations):
+                chunk_text = ""
+
+                async with client.messages.stream(
+                    model=req.model,
+                    max_tokens=8192,   # API maximum; continuation handles any overflow
+                    system=prompt,
+                    messages=messages,
+                ) as stream:
+                    async for text in stream.text_stream:
+                        chunk_text += text
+                        payload = json.dumps({"type": "text", "text": text})
+                        yield f"data: {payload}\n\n"
+
+                    final_msg = await stream.get_final_message()
+
+                full_text += chunk_text
+
+                # Normal completion — we're done
+                if final_msg.stop_reason != "max_tokens":
+                    break
+
+                # Output was cut off — ask the model to continue seamlessly
+                messages.append({"role": "assistant", "content": chunk_text})
+                messages.append({
+                    "role": "user",
+                    "content": (
+                        "You were cut off. Continue the document exactly from where you "
+                        "stopped — do not repeat any content, do not add a preamble, "
+                        "just resume mid-sentence if necessary."
+                    ),
+                })
+
             yield f"data: {json.dumps({'type': 'done'})}\n\n"
         except Exception as e:
             yield f"data: {json.dumps({'type': 'error', 'message': str(e)})}\n\n"
