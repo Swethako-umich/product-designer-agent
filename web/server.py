@@ -276,24 +276,33 @@ def parse_todo(req: ParseTodoRequest):
         model=req.model,
         max_tokens=512,
         system=(
-            "Extract the ordered UX skill list from a research plan. "
-            f"Return ONLY a JSON array using names from: {valid_json}. "
-            "No explanation, no markdown fences — raw JSON array only."
+            "The project plan below contains a JSON code block listing the exact skills "
+            "selected for this project. Extract that JSON array and return it as-is. "
+            f"Only include skill names from this valid set: {valid_json}. "
+            "Return ONLY the raw JSON array — no explanation, no markdown fences, no extra text. "
+            "Do NOT add skills that are not in the plan. Do NOT default to the full list."
         ),
         messages=[{
             "role": "user",
-            "content": f"Extract skill execution order:\n\n{req.research_plan[:3000]}",
+            "content": f"Extract the skill execution sequence from this project plan:\n\n{req.research_plan[:4000]}",
         }],
     )
     raw = strip_json_fences(resp.content[0].text)
     try:
         parsed = json.loads(raw)
+        # Keep only valid skill names, preserving the plan's order
         valid = [s for s in parsed if s in SKILL_SEQUENCE]
+        # research_plan is always first — it's already complete at this point
         if "research_plan" not in valid:
             valid.insert(0, "research_plan")
-        return {"todo": valid}
+        # Must have at least one skill beyond research_plan
+        if len(valid) >= 1:
+            return {"todo": valid}
+        raise ValueError("Empty skill list extracted")
     except Exception:
-        return {"todo": SKILL_SEQUENCE}
+        # On any failure, return only research_plan so the user sees the plan
+        # and can restart — never silently default to all 15 skills
+        return {"todo": ["research_plan"]}
 
 
 @app.post("/api/logbook")
