@@ -291,6 +291,7 @@
           <span class="review-strip-label" id="review-title">Output</span>
           <div class="review-dots" id="review-dots"></div>
           <span class="review-strip-step">Step <span id="step-num">—</span> of <span id="step-total">—</span></span>
+          <button id="btn-back-to-live" style="display:none;margin-left:auto" onclick="returnToLive()">↩ Back to live</button>
         </div>
 
         <!-- 2-column layout -->
@@ -304,9 +305,11 @@
                 <div id="review-qa-badge" class="qa-badge"></div>
                 <button class="btn btn-ghost" style="font-size:11px;padding:5px 10px;margin-left:auto" onclick="downloadCurrent()">⬇ .md</button>
                 <button class="btn btn-ghost" style="font-size:11px;padding:5px 10px" onclick="copyCurrent()">📋 Copy</button>
+                <button id="btn-edit-toggle" class="btn btn-ghost" style="font-size:11px;padding:5px 10px;display:none" onclick="toggleEditMode()">✏️ Edit</button>
               </div>
               <div class="output-card-body">
                 <div class="md" id="review-output"></div>
+                <textarea id="review-edit-area" class="review-edit-textarea" style="display:none" placeholder="Edit the output here…"></textarea>
               </div>
             </div>
 
@@ -353,6 +356,14 @@
                 <button class="btn btn-warn" id="btn-revise" onclick="handleRevise()">🔄 Revise</button>
                 <span class="approval-hint" id="approval-hint"></span>
               </div>
+            </div>
+            <div id="view-panel" class="approval-section" style="display:none">
+              <div>
+                <div class="approval-title">📄 Viewing completed step</div>
+                <div class="approval-sub">Edit the output and re-run all subsequent steps with your changes applied.</div>
+              </div>
+              <button id="btn-save-rerun" class="btn btn-primary" onclick="saveAndRerun()" style="display:none">↻ Save &amp; Re-run from here</button>
+              <button class="btn btn-ghost" onclick="downloadStep(S.viewingSkill)" style="width:100%">⬇ Download this file</button>
             </div>
           </div>
 

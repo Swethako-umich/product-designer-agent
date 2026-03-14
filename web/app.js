@@ -193,7 +193,9 @@ const S = {
   logbook:[], logbookSummary:'',
   approvalResolve:null, totalCompleted:0,
   paused:false, pauseRequested:false,
-  prototypeHtml:null
+  prototypeHtml:null,
+  isRunning:false,
+  viewingSkill:null
 };
 
 // ── Screen router ─────────────────────────────────────────────────────────────
@@ -268,6 +270,7 @@ async function startAgent(){
 
 // ── Main workflow ─────────────────────────────────────────────────────────────
 async function runWorkflow(){
+  S.isRunning=true;
   try{
     await executeSkillAndApprove('research_plan');
 
@@ -280,34 +283,36 @@ async function runWorkflow(){
     updateDashStats();
     toast('Research plan approved — workflow plan ready.','success');
     addLog('PLAN_PARSED','Workflow plan extracted',{skills:S.todoList});
-
-    for(let i=0;i<S.todoList.length;i++){
-      const skill=S.todoList[i];
-      if(skill==='research_plan') continue;
-      if(shouldSkip(skill)){
-        setSkillStatus(skill,'skipped');
-        addLog('SKILL_SKIP',`Skipped: ${skill}`,{reason:'User data provided or simulation declined'});
-        continue;
-      }
-      await checkPause();
-      await executeSkillAndApprove(skill);
-      updateProgress(S.totalCompleted,S.todoList.length);
-    }
-
-    await generateLogbook();
-
-    const logoEl=document.getElementById('hdr-logo');
-    if(logoEl) logoEl.classList.remove('running');
-    const pb=document.getElementById('btn-pause');
-    if(pb) pb.style.display='none';
-
+    await _runSkillLoop(1);
   }catch(e){
     console.error(e);
     toast('An error occurred: '+e.message,'error');
     setStatus('idle','Error');
     const logoEl2=document.getElementById('hdr-logo');
     if(logoEl2) logoEl2.classList.remove('running');
+  }finally{
+    S.isRunning=false;
   }
+}
+
+async function _runSkillLoop(startIdx){
+  for(let i=startIdx;i<S.todoList.length;i++){
+    const skill=S.todoList[i];
+    if(skill==='research_plan') continue;
+    if(shouldSkip(skill)){
+      setSkillStatus(skill,'skipped');
+      addLog('SKILL_SKIP',`Skipped: ${skill}`,{reason:'User data provided or simulation declined'});
+      continue;
+    }
+    await checkPause();
+    await executeSkillAndApprove(skill);
+    updateProgress(S.totalCompleted,S.todoList.length);
+  }
+  await generateLogbook();
+  const logoEl=document.getElementById('hdr-logo');
+  if(logoEl) logoEl.classList.remove('running');
+  const pb=document.getElementById('btn-pause');
+  if(pb) pb.style.display='none';
 }
 
 function shouldSkip(skill){
@@ -485,6 +490,13 @@ async function runQA(skillName,output){
 
 // ── Show review state ─────────────────────────────────────────────────────────
 function showReviewState(skillName,output,qa,iterations,escalationReason=null){
+  document.getElementById('state-review').classList.remove('view-mode');
+  S.viewingSkill=null;
+  const _backBtn=document.getElementById('btn-back-to-live');
+  if(_backBtn) _backBtn.style.display='none';
+  const _saveBtn=document.getElementById('btn-save-rerun');
+  if(_saveBtn) _saveBtn.style.display='none';
+
   showState('state-review');
   const display=SKILL_NAMES[skillName]||skillName;
 
@@ -653,10 +665,133 @@ function setSkillStatus(skill,status,qaScore=null){
 function viewSkillOutput(skill){
   const meta=S.skillMeta[skill];
   if(!meta||!meta.output) return;
+  S.viewingSkill=skill;
   showReviewState(skill,meta.output,meta.qa||{score:'PASS',issues:[],recommendations:[]},meta.iterations||1);
-  document.getElementById('btn-approve').disabled=true;
-  document.getElementById('btn-revise').disabled=true;
-  setTimeout(()=>{ document.getElementById('btn-approve').disabled=false; document.getElementById('btn-revise').disabled=false; },100);
+  // Switch to view mode
+  document.getElementById('state-review').classList.add('view-mode');
+  // Reset edit area to preview mode
+  const editArea=document.getElementById('review-edit-area');
+  const outputDiv=document.getElementById('review-output');
+  const editBtn=document.getElementById('btn-edit-toggle');
+  const saveBtn=document.getElementById('btn-save-rerun');
+  if(editArea){editArea.style.display='none';editArea.value='';}
+  if(outputDiv) outputDiv.style.display='';
+  if(editBtn) editBtn.textContent='✏️ Edit';
+  if(saveBtn) saveBtn.style.display='none';
+  // Show back-to-live if agent is running
+  const backBtn=document.getElementById('btn-back-to-live');
+  if(backBtn) backBtn.style.display=S.isRunning?'':'none';
+}
+
+function returnToLive(){
+  S.viewingSkill=null;
+  showState('state-executing');
+}
+
+function toggleEditMode(){
+  const editArea=document.getElementById('review-edit-area');
+  const outputDiv=document.getElementById('review-output');
+  const editBtn=document.getElementById('btn-edit-toggle');
+  const saveBtn=document.getElementById('btn-save-rerun');
+  const inEditMode=editArea&&editArea.style.display!=='none';
+  if(!inEditMode){
+    // Enter edit mode
+    if(editArea){
+      editArea.value=S.context[S.viewingSkill]||'';
+      editArea.style.display='';
+      editArea.oninput=()=>{
+        const changed=editArea.value!==(S.context[S.viewingSkill]||'');
+        if(saveBtn) saveBtn.style.display=changed?'':'none';
+      };
+    }
+    if(outputDiv) outputDiv.style.display='none';
+    if(editBtn) editBtn.textContent='👁 Preview';
+  }else{
+    // Exit edit mode — refresh preview
+    const newContent=editArea?editArea.value:'';
+    if(outputDiv){outputDiv.innerHTML=renderMd(newContent);postRenderMermaid(outputDiv);outputDiv.style.display='';}
+    if(editArea) editArea.style.display='none';
+    if(editBtn) editBtn.textContent='✏️ Edit';
+    const changed=newContent!==(S.context[S.viewingSkill]||'');
+    if(saveBtn) saveBtn.style.display=changed?'':'none';
+  }
+}
+
+async function saveAndRerun(){
+  const skill=S.viewingSkill;
+  if(!skill){toast('No step selected.','warn');return;}
+  const editArea=document.getElementById('review-edit-area');
+  // Grab content from edit area if open, otherwise from context
+  const inEditMode=editArea&&editArea.style.display!=='none';
+  const edited=inEditMode?editArea.value.trim():(S.context[skill]||'').trim();
+  if(!edited){toast('Nothing to save.','warn');return;}
+  if(S.isRunning){
+    if(!confirm('The agent is currently running. Saving will interrupt it and re-run from this point. Continue?')) return;
+    S.paused=true;
+    await sleep(800);
+  }
+  const idx=S.todoList.indexOf(skill);
+  if(idx<0){toast('Could not find skill in workflow.','error');return;}
+  // Save edited content
+  S.context[skill]=edited;
+  if(S.skillMeta[skill]) S.skillMeta[skill].output=edited;
+  // Reset all subsequent skills
+  for(let i=idx+1;i<S.todoList.length;i++){
+    const s=S.todoList[i];
+    setSkillStatus(s,'pending');
+    delete S.context[s];
+    delete S.skillMeta[s];
+  }
+  // Recalculate completed count
+  S.totalCompleted=S.todoList.slice(0,idx+1).filter(s=>S.skillMeta[s]&&S.skillMeta[s].status==='completed').length;
+  updateDashStats();
+  updateProgress(S.totalCompleted,S.todoList.length);
+  // Rebuild history accordion from remaining completed skills only
+  const acc=document.getElementById('history-accordion');
+  if(acc){
+    acc.innerHTML='';
+    S.todoList.slice(0,idx+1).forEach(s=>{
+      const m=S.skillMeta[s];
+      if(m&&m.status==='completed') addHistoryItem(s,m.output,m.qa);
+    });
+  }
+  S.viewingSkill=null;
+  S.paused=false;
+  const nextName=S.todoList[idx+1]?(SKILL_NAMES[S.todoList[idx+1]]||S.todoList[idx+1]):'next step';
+  toast(`Edits saved — re-running from ${nextName}…`,'info');
+  addLog('MANUAL_EDIT',`User edited ${skill} and triggered re-run from index ${idx+1}`,{skill,startIdx:idx+1});
+  // Set up running state
+  S.isRunning=true;
+  const logo=document.getElementById('hdr-logo');
+  if(logo) logo.classList.add('running');
+  const pb=document.getElementById('btn-pause');
+  const rb=document.getElementById('btn-restart');
+  if(pb){pb.style.display='';updatePauseBtn();}
+  if(rb) rb.style.display='';
+  setStatus('running','Resuming workflow…');
+  showState('state-executing');
+  try{
+    await _runSkillLoop(idx+1);
+  }catch(e){
+    console.error(e);
+    toast('Error during re-run: '+e.message,'error');
+    setStatus('idle','Error');
+    const logoEl=document.getElementById('hdr-logo');
+    if(logoEl) logoEl.classList.remove('running');
+  }finally{
+    S.isRunning=false;
+  }
+}
+
+function downloadStep(skill){
+  if(!skill) return;
+  if(skill==='ux_prototype_generator'&&S.prototypeHtml){
+    downloadText(S.prototypeHtml,'interactive-prototype.html','text/html');
+  }else{
+    const content=S.context[skill]||'';
+    const safeName=(SKILL_NAMES[skill]||skill).toLowerCase().replace(/[^a-z0-9]+/g,'-');
+    downloadText(content,`${safeName}.md`,'text/markdown');
+  }
 }
 
 // ── History accordion ──────────────────────────────────────────────────────────

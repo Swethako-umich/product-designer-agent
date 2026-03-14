@@ -260,6 +260,17 @@ textarea{min-height:140px;line-height:1.6}
 /* ─── Review state — progress strip + 2-col layout ──────────────────────── */
 #state-review{flex-direction:column;padding:0;gap:0}
 .escalation-banner{padding:10px 20px;background:#fff3cd;border-bottom:2px solid #f0ad4e;color:#7d5a00;font-size:12px;font-weight:500;line-height:1.4}
+
+/* View mode — swap approval panel for view panel */
+#state-review.view-mode .approval-section:not(#view-panel){display:none!important}
+#state-review.view-mode #view-panel{display:flex!important;flex-direction:column;gap:12px}
+#state-review.view-mode #btn-edit-toggle{display:inline-flex!important}
+
+/* Edit textarea fills the output card body */
+.review-edit-textarea{width:100%;flex:1;min-height:320px;padding:16px;font-family:var(--mono,monospace);font-size:12px;line-height:1.7;border:none;resize:none;background:var(--s1);color:var(--t1);outline:none;border-top:1px solid var(--bd)}
+
+/* Back-to-live button */
+#btn-back-to-live{background:var(--accent,#6c47ff);color:#fff;border:none;font-size:11px;padding:4px 12px;border-radius:6px;cursor:pointer;white-space:nowrap}
 .review-strip{display:flex;align-items:center;gap:14px;padding:10px 20px;background:var(--s2);border-bottom:1px solid var(--bd);flex-shrink:0}
 .review-strip-label{font-size:11px;font-weight:600;color:var(--t1);white-space:nowrap}
 .review-strip-step{font-size:10px;color:var(--t3);white-space:nowrap}
