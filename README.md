@@ -8,36 +8,38 @@ Built on the [Anthropic Python SDK](https://github.com/anthropics/anthropic-sdk-
 
 ## What it does
 
-The agent takes a product brief and autonomously runs every stage of the UX design process, one skill at a time. After each step it runs an automated QA check, presents the output to you for review, and waits for your explicit approval before continuing. At the end of every session it writes a self-assessment logbook and updates its own rules based on what it learned.
+You give the agent a project brief. It reads the brief, decides which design skills are actually needed for your specific project, and executes only those — in the right order. Not every project needs every step. A rebrand skips research and goes straight to brand guidelines. A validation task jumps to usability testing. The agent figures out the right sequence from your brief.
 
 ```
-Problem Brief
-     ↓
- Project Plan  (generates the ordered to-do list)
-     ↓
- Literature Review  →  Competitor Analysis
-     ↓
- Interview Guide  →  Simulated Interviews  (or use your own data)
-     ↓
- UXR Synthesis & Affinity Map
-     ↓
- Design Ideation  →  PRD  →  User Flow  →  Information Architecture
-     ↓
- Brand Guidelines  →  Design System
-     ↓
- Interactive HTML Prototype
-     ↓
- Usability Test Guide  →  Simulated Usability Testing  (or use your own data)
-     ↓
- Agent Logbook & Self-Update
+Your Project Brief
+        ↓
+  Project Plan  ←  agent reads brief, selects only the relevant skills
+        ↓
+  [ Only the skills your project needs, in logical order ]
+        ↓
+  Agent Logbook & Self-Update
 ```
 
-**At every step the agent:**
-- Runs the skill and streams the output to you live
-- Executes an automated QA check (completeness · UX principles · WCAG · brief alignment)
-- Waits for your explicit approval before moving on
-- If you request a revision: collects your feedback, re-runs, re-checks QA, asks again
-- Logs a self-reflection learning entry
+**Available skills the agent can draw from:**
+
+| Phase | Skills |
+|---|---|
+| Research | Literature Review, Competitor Analysis |
+| User Research | Interview Guide, Simulated Interviews, UXR Synthesis |
+| Design | Ideation, PRD, User Flow, Information Architecture, Brand Guidelines, Design System |
+| Build | Interactive HTML/CSS/JS Prototype |
+| Validation | Usability Test Guide, Simulated Usability Testing |
+
+**How the agent runs each skill:**
+
+1. Streams the output to you live as it generates
+2. Runs an automated QA check (completeness · UX principles · WCAG · brief alignment)
+3. If QA passes → auto-approves and moves to the next skill immediately
+4. If QA finds issues → automatically revises using the QA recommendations, re-runs, re-checks — no human needed
+5. Only asks for your input if the output still falls short after auto-revision attempts, or if a fundamental decision requires human judgment
+6. Logs a self-reflection learning entry after every skill
+
+**You stay in control** — you can review every completed deliverable in the sidebar at any time, and you can always request a revision manually.
 
 ---
 
@@ -184,16 +186,18 @@ product-designer-agent/
 
 ---
 
-## How the human approval loop works
+## How the QA and approval loop works
 
-After every skill the agent:
+After every skill the agent runs an automated QA check and handles the result autonomously:
 
-1. Shows the full output (rendered markdown in the browser, or printed to terminal in CLI)
-2. Shows the QA assessment — score (PASS / NEEDS IMPROVEMENT / FAIL), issues, recommendations
-3. Asks: *"Do you have any suggestions or improvements?"* — you can add notes even when approving
-4. Asks: *"Approve and continue?"*
-   - **Approve** → saves the output as context for the next skill, moves on
-   - **Request revision** → you provide feedback, the agent re-runs the skill with your notes, re-checks QA, asks again
+| QA result | What happens |
+|---|---|
+| **PASS** | Auto-approved. Agent logs the result and moves to the next skill immediately — no human input needed. |
+| **NEEDS IMPROVEMENT** | Agent extracts the QA recommendations and uses them as revision feedback, re-runs the skill, re-checks QA. Repeats automatically up to 3 times. |
+| **Still not passing after 3 attempts** | Escalates to you — shows the output and QA findings and asks for your input. |
+| **FAIL** | Escalates to you immediately — a fundamental issue requires human judgment. |
+
+You can also manually request a revision on any deliverable at any time from the sidebar, even after it has been auto-approved.
 
 ---
 

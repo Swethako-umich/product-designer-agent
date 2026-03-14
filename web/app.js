@@ -317,7 +317,14 @@ function shouldSkip(skill){
   return false;
 }
 
-// ── Execute skill + QA + approval loop ────────────────────────────────────────
+// ── Execute skill + auto-QA loop (human escalation only when needed) ──────────
+// Behaviour:
+//   PASS               → auto-approve, move on immediately
+//   NEEDS_IMPROVEMENT  → auto-revise up to MAX_AUTO_REVISIONS using QA recommendations
+//   FAIL               → escalate to human immediately
+//   Still not PASS after MAX_AUTO_REVISIONS → escalate to human
+const MAX_AUTO_REVISIONS = 3;
+
 async function executeSkillAndApprove(skillName){
   const display=SKILL_NAMES[skillName]||skillName;
   setSkillStatus(skillName,'running');
@@ -327,6 +334,7 @@ async function executeSkillAndApprove(skillName){
 
   let iterations=0;
   let feedback=null;
+  let autoRevisions=0;
 
   while(true){
     iterations++;
@@ -345,36 +353,67 @@ async function executeSkillAndApprove(skillName){
       addLog('LEARNING',lr.learning||'',{skill:skillName,category:skillName.toUpperCase()});
     }catch(_){}
 
-    showReviewState(skillName,output,qa,iterations);
+    // ── PASS: auto-approve, no human needed ───────────────────────────────────
+    if(qa.score==='PASS'){
+      autoApproveSkill(skillName,output,qa,iterations);
+      toast(display+' ✅ QA passed — continuing automatically','success');
+      break;
+    }
+
+    // ── NEEDS IMPROVEMENT + auto-revisions remaining: revise silently ─────────
+    if(qa.score==='NEEDS_IMPROVEMENT' && autoRevisions < MAX_AUTO_REVISIONS){
+      autoRevisions++;
+      // Build feedback from QA recommendations + issues
+      const recs=(qa.recommendations||[]).join('\n');
+      const issues=(qa.issues||[]).join('\n');
+      feedback=`QA identified the following issues to fix:\n${issues}\n\nRecommended fixes:\n${recs}`;
+      addLog('AUTO_REVISION',`Auto-revising ${skillName} (attempt ${autoRevisions}/${MAX_AUTO_REVISIONS})`,{reason:feedback});
+      setSkillStatus(skillName,'running');
+      showExecutingStatus(`QA found issues — auto-revising (${autoRevisions}/${MAX_AUTO_REVISIONS})…`);
+      toast(`QA: issues found — auto-revising ${display} (${autoRevisions}/${MAX_AUTO_REVISIONS})…`,'warn');
+      continue;
+    }
+
+    // ── FAIL or exhausted auto-revisions: escalate to human ──────────────────
+    const reason = qa.score==='FAIL'
+      ? '⚠️ QA score is FAIL — your input is needed to resolve a fundamental issue.'
+      : `⚠️ Still not passing after ${MAX_AUTO_REVISIONS} auto-revision attempts — your guidance is needed.`;
+    addLog('HUMAN_ESCALATION',`Escalating ${skillName} to human: ${qa.score}`,{iterations,autoRevisions});
+    toast(reason,'error');
+
+    showReviewState(skillName,output,qa,iterations,reason);
     const {approved,userFeedback}=await waitForApproval();
     if(userFeedback) addLog('USER_SUGGESTION','User suggestion for '+skillName,{feedback:userFeedback});
 
     if(approved){
-      S.totalCompleted++;
-      setSkillStatus(skillName,'completed',qa.score);
-      // Extract and store prototype HTML so it can be saved as .html in the zip
-      if(skillName==='ux_prototype_generator'){
-        const html=extractPrototypeHtml(output);
-        if(html){
-          S.prototypeHtml=html;
-          // Show dedicated prototype download button on Done screen
-          const pb=document.getElementById('btn-dl-prototype');
-          if(pb) pb.style.display='';
-        }
-      }
-      addLog('SKILL_COMPLETE','Completed: '+skillName,{skill:skillName,qa_score:qa.score,iterations,approved:true});
-      addHistoryItem(skillName,output,qa);
-      addDeliverableCard(skillName,qa.score);
-      updateDashStats();
-      toast(display+' approved ✅','success');
+      autoApproveSkill(skillName,output,qa,iterations);
       break;
     }else{
       feedback=userFeedback;
-      addLog('ITERATION','Revision requested for '+skillName,{reason:feedback});
+      autoRevisions=0; // reset auto-revision counter after human provides direction
+      addLog('ITERATION','Human revision requested for '+skillName,{reason:feedback});
       setSkillStatus(skillName,'running');
-      toast('Revising '+display+'…','warn');
+      toast('Revising '+display+' with your feedback…','warn');
     }
   }
+}
+
+// Shared logic for marking a skill complete (used by both auto-approve and human approve)
+function autoApproveSkill(skillName,output,qa,iterations){
+  S.totalCompleted++;
+  setSkillStatus(skillName,'completed',qa.score);
+  if(skillName==='ux_prototype_generator'){
+    const html=extractPrototypeHtml(output);
+    if(html){
+      S.prototypeHtml=html;
+      const pb=document.getElementById('btn-dl-prototype');
+      if(pb) pb.style.display='';
+    }
+  }
+  addLog('SKILL_COMPLETE','Completed: '+skillName,{skill:skillName,qa_score:qa.score,iterations,approved:true});
+  addHistoryItem(skillName,output,qa);
+  addDeliverableCard(skillName,qa.score);
+  updateDashStats();
 }
 
 // ── Streaming skill call ───────────────────────────────────────────────────────
@@ -445,9 +484,20 @@ async function runQA(skillName,output){
 }
 
 // ── Show review state ─────────────────────────────────────────────────────────
-function showReviewState(skillName,output,qa,iterations){
+function showReviewState(skillName,output,qa,iterations,escalationReason=null){
   showState('state-review');
   const display=SKILL_NAMES[skillName]||skillName;
+
+  // Show escalation banner if this was triggered by auto-QA failure
+  const banner=document.getElementById('review-escalation-banner');
+  if(banner){
+    if(escalationReason){
+      banner.textContent=escalationReason;
+      banner.style.display='';
+    }else{
+      banner.style.display='none';
+    }
+  }
   document.getElementById('review-title').textContent=display;
   document.getElementById('step-num').textContent=S.todoList.indexOf(skillName)+1;
   document.getElementById('step-total').textContent=S.todoList.length;
