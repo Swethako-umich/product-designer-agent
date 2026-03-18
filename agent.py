@@ -190,7 +190,7 @@ class ProductDesignerAgent:
 
         self._display_workflow_plan(todo)
 
-        if not self.hl.confirm("\nProceed with this workflow plan?", default=True):
+        if not self.hl.confirm("\nProceed with this workflow plan?", default=False):
             mods = self.hl.get_multiline_input("Describe any changes to the plan")
             self.context["workflow_modifications"] = mods
             self.logbook.add_entry("PLAN_MODIFIED", "User modified the workflow plan", {"modifications": mods})

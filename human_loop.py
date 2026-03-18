@@ -102,5 +102,5 @@ class HumanLoop:
         if has_suggestions:
             feedback = self.get_multiline_input("Enter your suggestions or changes")
 
-        approved = self.confirm(f"✅ Approve this output and proceed to the next step?", default=True)
+        approved = self.confirm(f"✅ Approve this output and proceed to the next step?", default=False)
         return approved, feedback
