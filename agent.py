@@ -166,6 +166,23 @@ class ProductDesignerAgent:
         self.hl.section("Phase 1 — UX Research Plan")
         self._run_skill("research_plan")
 
+        # ── Explicit checkpoint: user must confirm before workflow begins ─────
+        self.hl.section("Project Plan Approved — Ready to Execute")
+        self.console.print(
+            "[dim]The research plan above has been finalised.\n"
+            "The agent will now parse it into a step-by-step workflow and begin\n"
+            "executing each deliverable in sequence — one at a time, with your\n"
+            "approval at every step.[/dim]\n"
+        )
+        if not self.hl.confirm(
+            "▶  Proceed and begin the full workflow execution?", default=False
+        ):
+            self.console.print(
+                "[yellow]Workflow execution cancelled. "
+                "Restart the agent to begin with a new or updated brief.[/yellow]"
+            )
+            return
+
         # ── Parse to-do list from research plan ───────────────────────────────
         todo = self._parse_todo_list(self.context.get("research_plan", ""))
         self.context["todo_list"] = todo
@@ -213,45 +230,88 @@ class ProductDesignerAgent:
 
     # ─── Single skill execution ───────────────────────────────────────────────
 
-    def _run_skill(self, skill_name: str):
-        """Execute one skill: call Claude → QA → display → human approval loop."""
+    def _run_skill(self, skill_name: str, max_qa_rounds: int = 2):
+        """Execute one skill: call Claude → QA → display → human approval loop.
+
+        Each step is limited to ``max_qa_rounds`` QA iterations.  If the user
+        has not approved after the final round the best output is accepted
+        automatically so the pipeline can keep moving.
+        """
         display = SKILL_DISPLAY_NAMES.get(skill_name, skill_name)
         self.workflow.start_skill(skill_name)
         self.logbook.log_skill_start(skill_name)
 
-        iteration = 0
-        feedback  = None
+        iteration  = 0
+        feedback   = None
+        qa_result  = {}   # carries last QA result into next revision call
 
         while True:
             iteration += 1
-            output = self._call_skill(skill_name, feedback=feedback)
+            output = self._call_skill(skill_name, feedback=feedback, qa_result=qa_result)
 
             # Save to file
             out_file = self.project_dir / f"{skill_name}.md"
             out_file.write_text(output, encoding="utf-8")
             self.hl.info(f"Output saved → {out_file.name}")
 
-            # Run QA
-            self.console.print(f"\n[bold yellow]🔍 Running QA on {display}…[/bold yellow]")
-            qa_result = self.qa.check(skill_name, output, self.context)
-            self.logbook.log_qa_result(
-                skill_name,
-                qa_result.get("score", "?"),
-                qa_result.get("issues", []),
-                qa_result.get("recommendations", []),
-            )
-            self._display_qa_result(qa_result, display)
+            # Run QA only within the allowed round limit
+            if iteration <= max_qa_rounds:
+                self.console.print(
+                    f"\n[bold yellow]🔍 Running QA on {display}"
+                    f" (round {iteration}/{max_qa_rounds})…[/bold yellow]"
+                )
+                qa_result = self.qa.check(skill_name, output, self.context)
+                self.logbook.log_qa_result(
+                    skill_name,
+                    qa_result.get("score", "?"),
+                    qa_result.get("issues", []),
+                    qa_result.get("recommendations", []),
+                )
+                self._display_qa_result(qa_result, display)
+            else:
+                # QA rounds exhausted — skip automated check, go straight to human review
+                self.console.print(
+                    f"\n[dim]⚡  QA limit reached — skipping automated check.\n"
+                    f"    Please review the output below and approve when ready.[/dim]\n"
+                )
 
             # Display output
             self.hl.display_output(display, output)
 
-            # Human approval gate
-            approved, user_feedback = self.hl.approval_gate(display)
+            # Let the user know they can manually edit the file before approving
+            self.console.print(
+                f"\n[dim]📝  You can manually edit the saved file before approving:\n"
+                f"    {out_file}\n"
+                f"    Any edits you save will be picked up automatically.[/dim]\n"
+            )
+
+            # If QA passed, use a fast-path confirmation instead of the full gate
+            qa_passed = qa_result.get("score") == "PASS"
+            if qa_passed:
+                self.console.print(
+                    f"\n[bold green]✅  QA passed[/bold green] — {qa_result.get('summary', '')}"
+                )
+                approved = self.hl.confirm(
+                    f"Proceed to the next step?", default=True
+                )
+                user_feedback = ""
+                if not approved:
+                    user_feedback = self.hl.get_multiline_input(
+                        "What would you like changed?"
+                    )
+            else:
+                # Full approval gate for non-passing QA
+                approved, user_feedback = self.hl.approval_gate(display)
 
             if user_feedback:
                 self.logbook.log_user_feedback(skill_name, user_feedback)
 
             if approved:
+                # Re-read from disk so any manual edits the user made are captured
+                try:
+                    output = out_file.read_text(encoding="utf-8")
+                except Exception:
+                    pass  # fall back to in-memory output if read fails
                 self.context[skill_name] = output
                 self.workflow.complete_skill(skill_name, qa_result.get("score"), approved=True)
                 self.logbook.log_skill_complete(
@@ -264,18 +324,73 @@ class ProductDesignerAgent:
 
                 # Log a learning after every successful skill
                 self._reflect_and_log(skill_name, qa_result, iteration, user_feedback)
-                self.hl.success(f"{display} approved.")
+                self.hl.success(f"{display} approved — moving to the next step.")
                 break
             else:
                 self.logbook.log_iteration(skill_name, user_feedback)
                 self.workflow.increment_iteration(skill_name)
                 feedback = user_feedback
-                self.console.print(f"\n[bold]Revising {display}…[/bold]")
+
+                if iteration >= max_qa_rounds:
+                    # Round limit reached — do NOT regenerate again.
+                    # Present the current output and wait until the user approves.
+                    self.console.print(
+                        f"\n[bold yellow]⚡  Revision limit reached ({max_qa_rounds}/{max_qa_rounds}).[/bold yellow]\n"
+                        f"[dim]No further regeneration. Review the output below,\n"
+                        f"edit the file if needed, then approve to continue.[/dim]\n"
+                    )
+                    while True:
+                        self.hl.display_output(display, output)
+                        self.console.print(
+                            f"\n[dim]📝  You can manually edit the saved file before approving:\n"
+                            f"    {out_file}\n"
+                            f"    Any edits you save will be picked up automatically.[/dim]\n"
+                        )
+                        approved, user_feedback = self.hl.approval_gate(display)
+                        if user_feedback:
+                            self.logbook.log_user_feedback(skill_name, user_feedback)
+                        if approved:
+                            try:
+                                output = out_file.read_text(encoding="utf-8")
+                            except Exception:
+                                pass
+                            self.context[skill_name] = output
+                            self.workflow.complete_skill(skill_name, qa_result.get("score"), approved=True)
+                            self.logbook.log_skill_complete(
+                                skill_name,
+                                qa_result.get("score", "?"),
+                                True,
+                                iteration,
+                                output[:400],
+                            )
+                            self._reflect_and_log(skill_name, qa_result, iteration, user_feedback)
+                            self.hl.success(f"{display} approved — moving to the next step.")
+                            return  # exit _run_skill entirely
+
+                # Make it explicit: ONLY this step is being revised.
+                # Previously approved steps are untouched; execution will
+                # resume from the step AFTER this one once it is approved.
+                self.console.print(
+                    f"\n[bold yellow]↩  Revising [white]{display}[/white] only.[/bold yellow]\n"
+                    f"[dim]All previously approved steps are preserved.\n"
+                    f"Once this step is approved, the workflow will continue\n"
+                    f"from the next step with the updated output.[/dim]\n"
+                )
 
     # ─── Claude call ─────────────────────────────────────────────────────────
 
-    def _call_skill(self, skill_name: str, feedback: str = None) -> str:
-        """Call Claude with the skill system prompt + accumulated context."""
+    def _call_skill(
+        self,
+        skill_name: str,
+        feedback: str = None,
+        qa_result: dict = None,
+    ) -> str:
+        """Call Claude with the skill system prompt + accumulated context.
+
+        When ``qa_result`` is provided (revision round ≥ 2), the QA issues and
+        recommendations from the *previous* round are injected into the prompt
+        so Claude knows exactly what to fix — not just what the user typed.
+        """
         system_prompt = self.skills.load(skill_name)
         if not system_prompt:
             return f"[Skill '{skill_name}' not found in the skills directory — please add {skill_name}.md]"
@@ -291,6 +406,26 @@ class ProductDesignerAgent:
             user_msg += f"## User-Provided Interview Data\n{self.context['interview_data'][:3000]}\n\n"
         if self.context.get("usability_data"):
             user_msg += f"## User-Provided Usability Data\n{self.context['usability_data'][:3000]}\n\n"
+
+        # Inject QA issues + recommendations so Claude knows exactly what to fix
+        if qa_result:
+            issues  = qa_result.get("issues", [])
+            recs    = qa_result.get("recommendations", [])
+            qa_note = qa_result.get("summary", "")
+            if issues or recs:
+                user_msg += "## QA Issues to Address in This Revision\n"
+                if qa_note:
+                    user_msg += f"QA summary: {qa_note}\n\n"
+                if issues:
+                    user_msg += "Issues flagged:\n"
+                    for iss in issues:
+                        user_msg += f"- {iss}\n"
+                if recs:
+                    user_msg += "\nRecommendations:\n"
+                    for rec in recs:
+                        user_msg += f"- {rec}\n"
+                user_msg += "\n"
+
         if feedback:
             user_msg += f"## Revision Feedback from User\n{feedback}\n\n"
 
