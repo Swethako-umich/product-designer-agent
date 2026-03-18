@@ -285,23 +285,19 @@ class ProductDesignerAgent:
                 f"    Any edits you save will be picked up automatically.[/dim]\n"
             )
 
-            # If QA passed, use a fast-path confirmation instead of the full gate
-            qa_passed = qa_result.get("score") == "PASS"
-            if qa_passed:
+            # Surface QA verdict before the approval gate so the user has context
+            if qa_result.get("score") == "PASS":
                 self.console.print(
-                    f"\n[bold green]✅  QA passed[/bold green] — {qa_result.get('summary', '')}"
+                    f"\n[bold green]✅  QA passed[/bold green] — {qa_result.get('summary', '')}\n"
                 )
-                approved = self.hl.confirm(
-                    f"Proceed to the next step?", default=True
+            elif qa_result.get("score"):
+                self.console.print(
+                    f"\n[bold yellow]⚠️  QA score: {qa_result.get('score')}[/bold yellow]"
+                    f" — {qa_result.get('summary', '')}\n"
                 )
-                user_feedback = ""
-                if not approved:
-                    user_feedback = self.hl.get_multiline_input(
-                        "What would you like changed?"
-                    )
-            else:
-                # Full approval gate for non-passing QA
-                approved, user_feedback = self.hl.approval_gate(display)
+
+            # Always run the full human approval gate regardless of QA result
+            approved, user_feedback = self.hl.approval_gate(display)
 
             if user_feedback:
                 self.logbook.log_user_feedback(skill_name, user_feedback)
