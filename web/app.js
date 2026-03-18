@@ -68,6 +68,13 @@ function updateDashStats(){
   if($('dash-bar-fill')) $('dash-bar-fill').style.width = pct+'%';
   $('prog-fill').style.width = pct+'%';
   $('prog-label').textContent = done+' / '+total+' steps';
+  // Mirror stats to right panel
+  const rpp=document.getElementById('rp-pct'); if(rpp) rpp.textContent=pct+'%';
+  const rpq=document.getElementById('rp-qa'); if(rpq) rpq.textContent=qaRate;
+  const rpe=document.getElementById('rp-eta');
+  if(rpe){ const el2=document.getElementById('dash-elapsed'); if(el2) rpe.textContent=el2.textContent; }
+  const rps=document.getElementById('rp-spend'); if(rps) rps.textContent='$'+S.apiSpend.toFixed(2);
+  const dsp=document.getElementById('dash-spend'); if(dsp) dsp.textContent='$'+S.apiSpend.toFixed(2);
 }
 
 function addDeliverableCard(skillName, qaScore){
@@ -176,6 +183,14 @@ function restartAgent(){
   if(area) area.style.display='none';
   const ids=['dash-pct','dash-steps','dash-qa','dash-elapsed'];
   ids.forEach((id,i)=>{ const el=document.getElementById(id); if(el) el.textContent=['0%','0/0','—','0:00'][i]; });
+  S.apiSpend=0;
+  S.brandIntakeSelections=null; S.brandIntakeContext=null;
+  S.iaIntakeSelections=null; S.iaIntakeContext=null;
+  S.ufIntakeSelections=null; S.ufIntakeContext=null;
+  rpUpdateBrandDirection();
+  rpUpdateIADirection();
+  rpUpdateUFDirection();
+  const spendEl=document.getElementById('dash-spend'); if(spendEl) spendEl.textContent='$0.00';
   const fill=document.getElementById('dash-bar-fill');
   if(fill) fill.style.width='0%';
   showScreen('screen-brief');
@@ -195,7 +210,14 @@ const S = {
   paused:false, pauseRequested:false,
   prototypeHtml:null,
   isRunning:false,
-  viewingSkill:null
+  viewingSkill:null,
+  apiSpend:0,
+  brandIntakeSelections:null,
+  brandIntakeContext:null,
+  iaIntakeSelections:null,
+  iaIntakeContext:null,
+  ufIntakeSelections:null,
+  ufIntakeContext:null
 };
 
 // ── Screen router ─────────────────────────────────────────────────────────────
@@ -328,17 +350,37 @@ function shouldSkip(skill){
 //   NEEDS_IMPROVEMENT  → auto-revise up to MAX_AUTO_REVISIONS using QA recommendations
 //   FAIL               → escalate to human immediately
 //   Still not PASS after MAX_AUTO_REVISIONS → escalate to human
-const MAX_AUTO_REVISIONS = 3;
+const MAX_AUTO_REVISIONS = 2;
 
 async function executeSkillAndApprove(skillName){
   const display=SKILL_NAMES[skillName]||skillName;
+
+  // ── Brand intake gate: pause before brand guidelines to collect visual direction
+  let brandIntakeContext=null;
+  if(skillName==='ux_brand_guidelines'){
+    brandIntakeContext=await showBrandIntake();
+  }
+
+  // ── IA intake gate: pause before IA to collect navigation direction
+  let iaIntakeContext=null;
+  if(skillName==='ux_information_architecture'){
+    iaIntakeContext=await showIAIntake();
+  }
+
+  // ── User flow intake gate: pause before user flow to collect entry point direction
+  let ufIntakeContext=null;
+  if(skillName==='ux_user_flow'){
+    ufIntakeContext=await showUserFlowIntake();
+  }
+
   setSkillStatus(skillName,'running');
   S.currentSkillIdx=S.todoList.indexOf(skillName);
   setStatus('running','Running: '+display);
   addLog('SKILL_START','Started: '+skillName,{skill:skillName});
 
   let iterations=0;
-  let feedback=null;
+  // Seed initial feedback with intake answers so the skill gets them on first call
+  let feedback=brandIntakeContext||iaIntakeContext||ufIntakeContext||null;
   let autoRevisions=0;
 
   while(true){
@@ -515,6 +557,25 @@ function showReviewState(skillName,output,qa,iterations,escalationReason=null){
   document.getElementById('step-total').textContent=S.todoList.length;
   updateReviewStrip(skillName);
   updateDashStats();
+  rpUpdateBrief();
+  rpUpdateBrandDirection();
+  rpUpdateIADirection();
+  rpUpdateUFDirection();
+  updateQASuggestions(qa);
+
+  // Show / hide skill-specific viewers
+  const flowCard=document.getElementById('flow-viewer-card');
+  const protoCard=document.getElementById('proto-viewer-card');
+  if(skillName==='ux_user_flow'){
+    if(flowCard){ flowCard.style.display=''; initFlowViewer(output); }
+    if(protoCard) protoCard.style.display='none';
+  } else if(skillName==='ux_prototype_generator'){
+    if(protoCard){ protoCard.style.display=''; initProtoViewer(); }
+    if(flowCard) flowCard.style.display='none';
+  } else {
+    if(flowCard) flowCard.style.display='none';
+    if(protoCard) protoCard.style.display='none';
+  }
 
   const outEl=document.getElementById('review-output');
   outEl.innerHTML=renderMd(output);
@@ -955,6 +1016,619 @@ function downloadText(text,filename,mime='text/plain'){
 
 // ── Utility ───────────────────────────────────────────────────────────────────
 function sleep(ms){ return new Promise(r=>setTimeout(r,ms)); }
+
+// ── Right panel: brief ────────────────────────────────────────────────────────
+function rpUpdateBrief(){
+  const el=document.getElementById('rpBriefRead');
+  if(el) el.textContent=S.brief||'No brief entered.';
+  const ta=document.getElementById('rpBriefTextarea');
+  if(ta) ta.value=S.brief||'';
+}
+function rpEditBrief(){
+  document.getElementById('rpBriefRead').style.display='none';
+  document.getElementById('rpBriefEdit').style.display='block';
+  document.getElementById('rpBriefBody').style.maxHeight='300px';
+  document.getElementById('rpBriefEditBtn').style.visibility='hidden';
+  document.getElementById('rpBriefTextarea').focus();
+}
+function rpSaveBrief(){
+  const newBrief=document.getElementById('rpBriefTextarea').value.trim();
+  if(newBrief) S.brief=newBrief;
+  rpUpdateBrief();
+  _rpCloseBriefEdit();
+}
+function rpCancelBrief(){ _rpCloseBriefEdit(); }
+function _rpCloseBriefEdit(){
+  document.getElementById('rpBriefRead').style.display='block';
+  document.getElementById('rpBriefEdit').style.display='none';
+  document.getElementById('rpBriefBody').style.maxHeight='300px';
+  document.getElementById('rpBriefEditBtn').style.visibility='visible';
+}
+function rpToggleBrief(){
+  const body=document.getElementById('rpBriefBody');
+  const btn=document.getElementById('rpCollapseBtn');
+  const isOpen=btn.getAttribute('aria-expanded')==='true';
+  body.style.maxHeight=isOpen?'0px':'300px';
+  btn.textContent=isOpen?'▸':'▾';
+  btn.setAttribute('aria-expanded',String(!isOpen));
+}
+
+// ── Brand Direction right-panel card ─────────────────────────────────────────
+function rpUpdateBrandDirection(){
+  const card=document.getElementById('rp-brand-direction');
+  if(!card) return;
+  if(!S.brandIntakeSelections){ card.style.display='none'; return; }
+  card.style.display='';
+  const sel=S.brandIntakeSelections;
+  const rows=[];
+  if(sel.q1&&sel.q1.length) rows.push({l:'World',v:sel.q1.map(v=>v.split('(')[0].trim()).join(', ')});
+  if(sel.q2&&sel.q2.length) rows.push({l:'Avoid',v:sel.q2.map(v=>v.split('—')[0].trim()).join(', ')});
+  if(sel.q3) rows.push({l:'Type',v:sel.q3.split('—')[0].trim()});
+  if(sel.q4) rows.push({l:'Colour',v:sel.q4.split('—')[0].trim()});
+  if(sel.q5) rows.push({l:'Density',v:sel.q5.split('—')[0].trim()});
+  if(sel.q6) rows.push({l:'Never',v:`"${sel.q6}"`});
+  const body=document.getElementById('rp-brand-direction-body');
+  if(body) body.innerHTML=rows.map(r=>`<div class="rp-bd-row"><span class="rp-bd-label">${escHtml(r.l)}</span><span class="rp-bd-value">${escHtml(r.v)}</span></div>`).join('');
+}
+
+function editBrandDirection(){
+  showBrandIntake().then(answers=>{
+    S.brandIntakeContext=answers;
+    toast('Brand direction updated. Changes apply to the next skill run.','success');
+  });
+}
+
+// ── Approve bar: changes panel toggle ────────────────────────────────────────
+function toggleApproveChanges(){
+  const panel=document.getElementById('approve-changes-panel');
+  const btn=document.getElementById('approve-changes-toggle');
+  const isOpen=panel.classList.contains('open');
+  panel.classList.toggle('open');
+  btn.classList.toggle('active',!isOpen);
+  btn.textContent=isOpen?'⚠ Changes ▾':'⚠ Changes ▴';
+}
+
+// ── QA suggestions chips ──────────────────────────────────────────────────────
+function updateQASuggestions(qa){
+  const row=document.getElementById('qa-suggestions-row');
+  const chipsEl=document.getElementById('qa-chips-row');
+  if(!row||!chipsEl) return;
+  const items=(qa.recommendations||[]).slice(0,4);
+  if(items.length===0){ row.style.display='none'; return; }
+  row.style.display='block';
+  chipsEl.innerHTML=items.map((r,i)=>`<button class="qa-chip-btn" onclick="applyQAChip(this,'${escHtml(r)}')">${escHtml(r.length>40?r.slice(0,38)+'…':r)}</button>`).join('');
+}
+function applyQAChip(el,text){
+  if(el.disabled) return;
+  el.classList.add('applied');
+  el.textContent='✓ '+el.textContent;
+  el.disabled=true;
+  const ta=document.getElementById('inp-suggestions');
+  if(ta) ta.value=(ta.value?ta.value+'\n':'')+text;
+}
+
+// ── Direct edit mode on output ────────────────────────────────────────────────
+let _directEditOrig='';
+function toggleEditMode(){
+  const out=document.getElementById('review-output');
+  const banner=document.getElementById('editModeBanner');
+  const btn=document.getElementById('btn-edit-toggle');
+  if(!out||!banner) return;
+  const isEditing=out.contentEditable==='true';
+  if(!isEditing){
+    _directEditOrig=out.innerHTML;
+    out.contentEditable='true';
+    out.focus();
+    banner.classList.add('visible');
+    if(btn){ btn.classList.add('active'); btn.textContent='✎ Editing…'; }
+  } else { _exitDirectEdit(); }
+}
+function saveDirectEdit(){ _exitDirectEdit(); }
+function discardDirectEdit(){
+  const out=document.getElementById('review-output');
+  if(out) out.innerHTML=_directEditOrig;
+  _exitDirectEdit();
+}
+function _exitDirectEdit(){
+  const out=document.getElementById('review-output');
+  const banner=document.getElementById('editModeBanner');
+  const btn=document.getElementById('btn-edit-toggle');
+  if(out) out.contentEditable='false';
+  if(banner) banner.classList.remove('visible');
+  if(btn){ btn.classList.remove('active'); btn.textContent='✎ Edit'; }
+}
+
+// ── Brand Intake Modal ─────────────────────────────────────────────────────────
+let _brandIntakeResolve=null;
+
+function showBrandIntake(){
+  return new Promise(resolve=>{
+    _brandIntakeResolve=resolve;
+    // Reset all selections first
+    document.querySelectorAll('.bi-opt').forEach(b=>b.classList.remove('sel'));
+    document.querySelectorAll('.bi-text-input').forEach(i=>{ i.value=''; if(i.id!=='bi-q6') i.style.display='none'; });
+    // Pre-populate from saved selections if editing
+    if(S.brandIntakeSelections){
+      const sel=S.brandIntakeSelections;
+      // Q1, Q2 (multi)
+      ['q1','q2'].forEach(q=>{
+        const vals=sel[q]||[];
+        vals.forEach(v=>{
+          const btn=document.querySelector(`.bi-opt[data-q="${q}"][data-v="${v}"]`);
+          if(btn) btn.classList.add('sel');
+          // Show "other" text if needed
+          const otherBtn=document.querySelector(`.bi-opt-other[data-q="${q}"]`);
+          if(otherBtn && otherBtn.classList.contains('sel') && otherBtn.dataset.target){
+            const inp=document.getElementById(otherBtn.dataset.target);
+            if(inp){ inp.style.display=''; inp.value=sel[q+'_other']||''; }
+          }
+        });
+      });
+      // Q3, Q4, Q5 (single)
+      ['q3','q4','q5'].forEach(q=>{
+        if(sel[q]){
+          const btn=document.querySelector(`.bi-opt[data-q="${q}"][data-v="${sel[q]}"]`);
+          if(btn) btn.classList.add('sel');
+        }
+      });
+      // Q6
+      const q6=document.getElementById('bi-q6');
+      if(q6 && sel.q6) q6.value=sel.q6;
+    }
+    document.getElementById('brand-intake-overlay').style.display='flex';
+    const body=document.querySelector('.bi-body');
+    if(body) body.scrollTop=0;
+    // Wire up option buttons
+    document.querySelectorAll('.bi-opt').forEach(btn=>{
+      btn.onclick=null;
+      btn.addEventListener('click',_biHandleOpt,{once:false});
+    });
+  });
+}
+
+function _biHandleOpt(e){
+  const btn=e.currentTarget;
+  const q=btn.dataset.q;
+  const v=btn.dataset.v;
+  const isSingle=btn.closest('.bi-single');
+  const isOther=btn.classList.contains('bi-opt-other');
+  const targetId=btn.dataset.target;
+
+  if(isSingle){
+    // Deselect all in this group, select only this one
+    btn.closest('.bi-options').querySelectorAll('.bi-opt').forEach(b=>b.classList.remove('sel'));
+    btn.classList.add('sel');
+  } else {
+    // Multi: enforce max 2 for Q1
+    const selected=btn.closest('.bi-options').querySelectorAll('.bi-opt.sel');
+    if(!btn.classList.contains('sel') && q==='q1' && selected.length>=2) return;
+    btn.classList.toggle('sel');
+  }
+
+  // Show/hide "other" text input
+  if(isOther && targetId){
+    const input=document.getElementById(targetId);
+    if(input) input.style.display=btn.classList.contains('sel')?'':'none';
+  }
+}
+
+function submitBrandIntake(){
+  const q6=document.getElementById('bi-q6').value.trim();
+  if(!q6){ document.getElementById('bi-q6').focus(); toast('Please complete the last question.','warn'); return; }
+
+  const collectVals=(groupId,otherId)=>{
+    const vals=[], otherVals=[];
+    document.querySelectorAll(`#${groupId} .bi-opt.sel`).forEach(b=>{
+      if(b.dataset.v==='other'){
+        const t=otherId?document.getElementById(otherId).value.trim():'';
+        if(t) otherVals.push(t);
+      } else { vals.push(b.dataset.v); }
+    });
+    return {vals:[...vals,...otherVals], other:otherVals[0]||''};
+  };
+
+  const r1=collectVals('bi-q1','bi-q1-other');
+  const r2=collectVals('bi-q2','bi-q2-other');
+  const r3=collectVals('bi-q3',null);
+  const r4=collectVals('bi-q4',null);
+  const r5=collectVals('bi-q5',null);
+
+  // Save raw selections so modal can be pre-populated on edit
+  S.brandIntakeSelections={
+    q1: document.querySelectorAll('#bi-q1 .bi-opt.sel:not(.bi-opt-other)').length
+      ? [...document.querySelectorAll('#bi-q1 .bi-opt.sel:not(.bi-opt-other)')].map(b=>b.dataset.v) : [],
+    q1_other: r1.other,
+    q2: document.querySelectorAll('#bi-q2 .bi-opt.sel:not(.bi-opt-other)').length
+      ? [...document.querySelectorAll('#bi-q2 .bi-opt.sel:not(.bi-opt-other)')].map(b=>b.dataset.v) : [],
+    q2_other: r2.other,
+    q3: r3.vals[0]||'',
+    q4: r4.vals[0]||'',
+    q5: r5.vals[0]||'',
+    q6
+  };
+
+  const lines=[
+    '=== BRAND DIRECTION (from user — apply these constraints strictly) ===',
+    '',
+    r1.vals.length ? `Brand world / mood reference: ${r1.vals.join(', ')}` : null,
+    r2.vals.length ? `Aesthetics to AVOID (do NOT use these): ${r2.vals.join(', ')}` : null,
+    r3.vals.length ? `Typography feel: ${r3.vals[0]}` : null,
+    r4.vals.length ? `Colour quality: ${r4.vals[0]}` : null,
+    r5.vals.length ? `Information density: ${r5.vals[0]}` : null,
+    `Must never be mistaken for: "${q6}"`,
+    '',
+    'These are hard constraints. Do not default to purple, violet, or generic dark-mode AI aesthetics unless explicitly aligned with the answers above.',
+    '=================================================================',
+  ].filter(l=>l!==null).join('\n');
+
+  S.brandIntakeContext=lines;
+
+  document.getElementById('brand-intake-overlay').style.display='none';
+  rpUpdateBrandDirection();
+
+  if(_brandIntakeResolve){ _brandIntakeResolve(lines); _brandIntakeResolve=null; }
+  else { toast('Brand direction saved.','success'); }
+}
+
+// ── IA Navigation Intake Modal ─────────────────────────────────────────────────
+let _iaIntakeResolve=null;
+
+function showIAIntake(){
+  return new Promise(resolve=>{
+    _iaIntakeResolve=resolve;
+    // Reset
+    document.querySelectorAll('#ia-intake-overlay .bi-opt').forEach(b=>b.classList.remove('sel'));
+    const q1other=document.getElementById('ia-q1-other');
+    const q2=document.getElementById('ia-q2');
+    if(q1other){ q1other.style.display='none'; q1other.value=''; }
+    if(q2) q2.value='';
+    // Pre-populate from saved selections
+    if(S.iaIntakeSelections){
+      const sel=S.iaIntakeSelections;
+      (sel.q1||[]).forEach(v=>{
+        const btn=document.querySelector(`#ia-intake-overlay .bi-opt[data-q="ia-q1"][data-v="${v}"]`);
+        if(btn) btn.classList.add('sel');
+      });
+      const otherBtn=document.querySelector('#ia-intake-overlay .bi-opt-other[data-q="ia-q1"]');
+      if(otherBtn && sel.q1_other){
+        otherBtn.classList.add('sel');
+        if(q1other){ q1other.style.display=''; q1other.value=sel.q1_other; }
+      }
+      if(q2 && sel.q2) q2.value=sel.q2;
+    }
+    document.getElementById('ia-intake-overlay').style.display='flex';
+    const body=document.querySelector('#ia-intake-overlay .bi-body');
+    if(body) body.scrollTop=0;
+    // Wire option buttons
+    document.querySelectorAll('#ia-intake-overlay .bi-opt').forEach(btn=>{
+      btn.onclick=null;
+      btn.addEventListener('click',_iaHandleOpt,{once:false});
+    });
+  });
+}
+
+function _iaHandleOpt(e){
+  const btn=e.currentTarget;
+  const isOther=btn.classList.contains('bi-opt-other');
+  const targetId=btn.dataset.target;
+  btn.classList.toggle('sel');
+  if(isOther && targetId){
+    const input=document.getElementById(targetId);
+    if(input) input.style.display=btn.classList.contains('sel')?'':'none';
+  }
+}
+
+function submitIAIntake(){
+  const q2val=document.getElementById('ia-q2').value.trim();
+  if(!q2val){ document.getElementById('ia-q2').focus(); toast('Please name a navigation anti-reference.','warn'); return; }
+
+  const q1vals=[];
+  let q1other='';
+  document.querySelectorAll('#ia-q1 .bi-opt.sel').forEach(b=>{
+    if(b.dataset.v==='other'){
+      q1other=document.getElementById('ia-q1-other').value.trim();
+      if(q1other) q1vals.push(q1other);
+    } else { q1vals.push(b.dataset.v); }
+  });
+
+  // Save raw selections for re-edit
+  S.iaIntakeSelections={
+    q1:[...document.querySelectorAll('#ia-q1 .bi-opt.sel:not(.bi-opt-other)')].map(b=>b.dataset.v),
+    q1_other: q1other,
+    q2: q2val
+  };
+
+  const lines=[
+    '=== NAVIGATION DIRECTION (from user — apply these constraints strictly) ===',
+    '',
+    q1vals.length ? `Navigation pattern(s) the user wants: ${q1vals.join(', ')}` : 'Navigation pattern: not specified — infer from user flow and research',
+    `Navigation must NEVER feel like: ${q2val}`,
+    '',
+    'Design the navigation model around these constraints. Do not default to a standard tab bar or sidebar unless it is explicitly listed above.',
+    '=================================================================',
+  ].join('\n');
+
+  S.iaIntakeContext=lines;
+  document.getElementById('ia-intake-overlay').style.display='none';
+  rpUpdateIADirection();
+
+  if(_iaIntakeResolve){ _iaIntakeResolve(lines); _iaIntakeResolve=null; }
+  else { toast('Navigation direction saved.','success'); }
+}
+
+function rpUpdateIADirection(){
+  const card=document.getElementById('rp-ia-direction');
+  if(!card) return;
+  if(!S.iaIntakeSelections){ card.style.display='none'; return; }
+  card.style.display='';
+  const sel=S.iaIntakeSelections;
+  const rows=[];
+  const navVals=[...(sel.q1||[])];
+  if(sel.q1_other) navVals.push(sel.q1_other);
+  if(navVals.length) rows.push({l:'Nav',v:navVals.map(v=>v.split('—')[0].split('(')[0].trim()).join(', ')});
+  if(sel.q2) rows.push({l:'Never',v:`"${sel.q2}"`});
+  const body=document.getElementById('rp-ia-direction-body');
+  if(body) body.innerHTML=rows.map(r=>`<div class="rp-bd-row"><span class="rp-bd-label">${escHtml(r.l)}</span><span class="rp-bd-value">${escHtml(r.v)}</span></div>`).join('');
+}
+
+function editIADirection(){
+  showIAIntake().then(answers=>{
+    S.iaIntakeContext=answers;
+    toast('Navigation direction updated. Changes apply to the next skill run.','success');
+  });
+}
+
+// ── User Flow Entry Point Intake Modal ────────────────────────────────────────
+let _ufIntakeResolve=null;
+
+async function showUserFlowIntake(){
+  return new Promise(async resolve=>{
+    _ufIntakeResolve=resolve;
+    // Reset Q2
+    const q2=document.getElementById('uf-q2');
+    if(q2) q2.value='';
+    // Show modal immediately
+    document.getElementById('uf-intake-overlay').style.display='flex';
+    const body=document.querySelector('#uf-intake-overlay .bi-body');
+    if(body) body.scrollTop=0;
+    // Pre-populate Q2 if editing
+    if(S.ufIntakeSelections && q2) q2.value=S.ufIntakeSelections.q2||'';
+    // Load entry point options into Q1
+    const q1=document.getElementById('uf-q1');
+    if(q1){
+      if(S.ufIntakeSelections && S.ufIntakeSelections._options && S.ufIntakeSelections._options.length){
+        // Re-use cached options so we don't re-fetch on edit
+        _ufRenderOptions(q1,S.ufIntakeSelections._options,S.ufIntakeSelections.q1||[]);
+      } else {
+        // Show animated skeleton while fetching
+        q1.innerHTML='<div class="bi-loading-skeleton">'
+          +['120px','90px','150px','85px','115px','105px'].map(w=>`<div class="bi-skel-pill" style="width:${w}"></div>`).join('')
+          +'</div>';
+        try{
+          const res=await fetch('/api/suggest-entry-points',{
+            method:'POST',
+            headers:{'Content-Type':'application/json'},
+            body:JSON.stringify({api_key:S.apiKey,brief:S.brief,context:buildContextForAPI('ux_user_flow'),model:S.model})
+          });
+          const data=await res.json();
+          _ufRenderOptions(q1,data.options||[],[]);
+        }catch(err){
+          console.warn('Entry point suggestion failed, using fallback:',err);
+          _ufRenderOptions(q1,[
+            'Open the app directly',
+            'Tap a push notification',
+            'Follow a link from a message',
+            'Tap a home screen widget',
+            'Follow steps the app suggests',
+            'Already in the app, switching task',
+          ],[]);
+        }
+      }
+    }
+  });
+}
+
+function _ufRenderOptions(container,options,selectedVals){
+  container.innerHTML='';
+  // Store the options list on the container for later save
+  container.dataset.options=JSON.stringify(options);
+  options.forEach(opt=>{
+    const btn=document.createElement('button');
+    btn.className='bi-opt'+(selectedVals.includes(opt)?' sel':'');
+    btn.dataset.q='uf-q1';
+    btn.dataset.v=opt;
+    btn.textContent=opt;
+    btn.addEventListener('click',_ufHandleOpt);
+    container.appendChild(btn);
+  });
+}
+
+function _ufHandleOpt(e){
+  e.currentTarget.classList.toggle('sel');
+}
+
+function submitUserFlowIntake(){
+  const q2val=document.getElementById('uf-q2').value.trim();
+  if(!q2val){ document.getElementById('uf-q2').focus(); toast('Please name a flow anti-reference.','warn'); return; }
+
+  const q1container=document.getElementById('uf-q1');
+  const allOptions=q1container.dataset.options?JSON.parse(q1container.dataset.options):[];
+  const q1vals=[];
+  q1container.querySelectorAll('.bi-opt.sel').forEach(b=>q1vals.push(b.dataset.v));
+
+  // Save raw selections so the modal can be pre-populated on re-edit
+  S.ufIntakeSelections={
+    q1: q1vals,
+    q2: q2val,
+    _options: allOptions
+  };
+
+  const lines=[
+    '=== USER FLOW DIRECTION (from user — apply these constraints strictly) ===',
+    '',
+    q1vals.length
+      ? `Entry point(s) to map in this flow: ${q1vals.join(', ')}`
+      : 'Entry point: infer from research — do not default to generic Onboarding/Login',
+    `Flow must NEVER feel like it starts the same way as: ${q2val}`,
+    '',
+    'Map the user flow starting from the specified entry point(s). Do not default to Onboarding → Login as the first nodes unless explicitly listed above.',
+    '=================================================================',
+  ].join('\n');
+
+  S.ufIntakeContext=lines;
+  document.getElementById('uf-intake-overlay').style.display='none';
+  rpUpdateUFDirection();
+
+  if(_ufIntakeResolve){ _ufIntakeResolve(lines); _ufIntakeResolve=null; }
+  else { toast('Flow direction saved.','success'); }
+}
+
+function rpUpdateUFDirection(){
+  const card=document.getElementById('rp-uf-direction');
+  if(!card) return;
+  if(!S.ufIntakeSelections){ card.style.display='none'; return; }
+  card.style.display='';
+  const sel=S.ufIntakeSelections;
+  const rows=[];
+  if(sel.q1&&sel.q1.length) rows.push({l:'Start',v:sel.q1.join(', ')});
+  if(sel.q2) rows.push({l:'Never',v:`"${sel.q2}"`});
+  const body=document.getElementById('rp-uf-direction-body');
+  if(body) body.innerHTML=rows.map(r=>`<div class="rp-bd-row"><span class="rp-bd-label">${escHtml(r.l)}</span><span class="rp-bd-value">${escHtml(r.v)}</span></div>`).join('');
+}
+
+function editUFDirection(){
+  showUserFlowIntake().then(answers=>{
+    S.ufIntakeContext=answers;
+    toast('Flow direction updated. Changes apply to the next skill run.','success');
+  });
+}
+
+// ── Flow Viewer ────────────────────────────────────────────────────────────────
+function initFlowViewer(output){
+  const canvas=document.getElementById('flow-canvas-area');
+  if(!canvas) return;
+  // Try to extract a mermaid block from the markdown output
+  const mermaidMatch=output.match(/```mermaid\n([\s\S]*?)```/);
+  if(mermaidMatch && typeof mermaid!=='undefined'){
+    const code=mermaidMatch[1].trim();
+    const div=document.createElement('div');
+    div.className='mermaid';
+    div.textContent=code;
+    canvas.innerHTML='';
+    canvas.appendChild(div);
+    mermaid.init(undefined, div);
+  } else {
+    // Fallback: render full markdown (which will trigger postRenderMermaid)
+    canvas.innerHTML='<div class="md">'+renderMd(output)+'</div>';
+    postRenderMermaid(canvas);
+  }
+}
+
+function downloadFlowSvg(){
+  const svg=document.querySelector('#flow-canvas-area svg');
+  if(!svg){ toast('No SVG diagram available yet.','warn'); return; }
+  const blob=new Blob([svg.outerHTML],{type:'image/svg+xml'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download='user-flow.svg';
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+// ── Prototype Viewer ───────────────────────────────────────────────────────────
+let _protoBlobUrl=null;
+
+function initProtoViewer(){
+  const iframe=document.getElementById('proto-iframe');
+  if(!iframe) return;
+  // Revoke previous blob URL
+  if(_protoBlobUrl){ URL.revokeObjectURL(_protoBlobUrl); _protoBlobUrl=null; }
+  if(S.prototypeHtml){
+    const blob=new Blob([S.prototypeHtml],{type:'text/html'});
+    _protoBlobUrl=URL.createObjectURL(blob);
+    iframe.src=_protoBlobUrl;
+  } else {
+    // Prototype HTML not extracted yet — show placeholder
+    iframe.src='about:blank';
+    iframe.contentDocument&&(iframe.contentDocument.body.innerHTML='<div style="font:13px sans-serif;color:#666;padding:20px">Prototype loading…</div>');
+  }
+  // Update clock
+  const clock=document.getElementById('proto-clock');
+  if(clock){ const n=new Date(); clock.textContent=`${n.getHours()}:${String(n.getMinutes()).padStart(2,'0')}`; }
+  // Init welcome message in chat
+  const msgs=document.getElementById('protoChatMessages');
+  if(msgs && msgs.children.length===0){
+    const name=S.projectName||'your product';
+    msgs.innerHTML=`<div class="proto-msg agent"><div class="proto-msg-bubble">Your <strong>${escHtml(name)}</strong> prototype is ready! Browse all screens, then tell me what you'd like to change. 🎨</div><div class="proto-msg-time">Just now</div></div>`;
+  }
+}
+
+const _PROTO_REPLIES=[
+  'Done! Applied that change — refresh the prototype to see it ✓',
+  'Great idea! I\'ve noted your feedback. Hit Revise below to regenerate with it applied.',
+  'Change noted ✓ — click Revise & Continue to rebuild the prototype with this update.',
+  'Updated! Navigate through the screens to review it 🎨',
+  'Noted that change. Use the Revise button below to regenerate with your suggestion.',
+];
+
+function sendProtoChat(){
+  const input=document.getElementById('protoChatInput');
+  const msgs=document.getElementById('protoChatMessages');
+  if(!input||!msgs) return;
+  const text=input.value.trim();
+  if(!text) return;
+  const n=new Date(); const t=`${n.getHours()}:${String(n.getMinutes()).padStart(2,'0')}`;
+  // User bubble
+  const uMsg=document.createElement('div');
+  uMsg.className='proto-msg user';
+  uMsg.innerHTML=`<div class="proto-msg-bubble">${escHtml(text)}</div><div class="proto-msg-time">${t}</div>`;
+  msgs.appendChild(uMsg);
+  input.value='';
+  msgs.scrollTop=msgs.scrollHeight;
+  // Typing indicator
+  const typing=document.createElement('div');
+  typing.className='proto-msg agent';
+  typing.innerHTML='<div class="proto-msg-bubble" style="color:var(--t3)">…</div>';
+  msgs.appendChild(typing);
+  msgs.scrollTop=msgs.scrollHeight;
+  // Reply after short delay
+  setTimeout(()=>{
+    typing.remove();
+    const reply=_PROTO_REPLIES[Math.floor(Math.random()*_PROTO_REPLIES.length)];
+    const aMsg=document.createElement('div');
+    aMsg.className='proto-msg agent';
+    aMsg.innerHTML=`<div class="proto-msg-bubble">${escHtml(reply)}</div><div class="proto-msg-time">${t}</div>`;
+    msgs.appendChild(aMsg);
+    msgs.scrollTop=msgs.scrollHeight;
+    // Pre-fill the suggestions field so user can just click Revise
+    const sugg=document.getElementById('inp-suggestions');
+    if(sugg && !sugg.value) sugg.value=text;
+    toast('Change noted — click ⚠ Changes or Revise to regenerate.','info');
+  }, 900);
+}
+
+// ── Thought starter rotation ───────────────────────────────────────────────────
+const _thoughts=[
+  'What\'s one thing your users most want to complete faster?',
+  'Which competitor feature do your target users secretly love?',
+  'What would a first-time user be confused about on screen 1?',
+  'What emotion do you want users to feel when they first open the app?',
+  'If you removed 50% of features, which half would users keep?',
+  'What\'s the most common support ticket you\'d get at launch?',
+  'Which user need is so obvious it\'s easy to forget?',
+  'What would make a user recommend this to a friend unprompted?',
+];
+let _thoughtIdx=0;
+setInterval(()=>{
+  const el=document.getElementById('rp-thought-q');
+  if(!el) return;
+  el.style.opacity='0';
+  setTimeout(()=>{
+    _thoughtIdx=(_thoughtIdx+1)%_thoughts.length;
+    el.textContent=_thoughts[_thoughtIdx];
+    el.style.opacity='1';
+  },400);
+},8000);
 
 // ── Enter key shortcuts ───────────────────────────────────────────────────────
 document.getElementById('inp-key').addEventListener('keydown',e=>{ if(e.key==='Enter') goToBrief(); });
