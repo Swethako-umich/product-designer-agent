@@ -328,20 +328,15 @@ class ProductDesignerAgent:
                 feedback = user_feedback
 
                 if iteration >= max_qa_rounds:
-                    # Round limit reached — do NOT regenerate again.
-                    # Present the current output and wait until the user approves.
+                    # Round limit reached — do NOT regenerate or re-display.
+                    # The output is still on screen from the attempt above.
+                    # Just wait for the user to approve (or edit the file first).
                     self.console.print(
                         f"\n[bold yellow]⚡  Revision limit reached ({max_qa_rounds}/{max_qa_rounds}).[/bold yellow]\n"
-                        f"[dim]No further regeneration. Review the output below,\n"
-                        f"edit the file if needed, then approve to continue.[/dim]\n"
+                        f"[dim]No further regeneration. Edit the file if needed, then approve to continue:\n"
+                        f"    {out_file}[/dim]\n"
                     )
                     while True:
-                        self.hl.display_output(display, output)
-                        self.console.print(
-                            f"\n[dim]📝  You can manually edit the saved file before approving:\n"
-                            f"    {out_file}\n"
-                            f"    Any edits you save will be picked up automatically.[/dim]\n"
-                        )
                         approved, user_feedback = self.hl.approval_gate(display)
                         if user_feedback:
                             self.logbook.log_user_feedback(skill_name, user_feedback)
